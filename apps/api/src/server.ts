@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { config } from "./config.js";
-import { authRouter } from "./routes/auth.routes.js";
-import { farmRouter } from "./routes/farm.routes.js";
-import { recommendationRouter } from "./routes/recommendation.routes.js";
-import { apiRateLimiter } from "./middlewares/rateLimiter.js";
-import { db } from "./storage/db.js";
+import { config } from "./config";
+import { authRouter } from "./routes/auth.routes";
+import { farmRouter } from "./routes/farm.routes";
+import { recommendationRouter } from "./routes/recommendation.routes";
+import { apiRateLimiter } from "./middlewares/rateLimiter";
+import { db } from "./storage/db";
 
 export const app = express();
 
@@ -58,3 +58,4 @@ if (process.env.NODE_ENV !== "test") {
     console.log(`📊 Health check: http://localhost:${config.port}/api/v1/health\n`);
   });
 }
+

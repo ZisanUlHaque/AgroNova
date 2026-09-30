@@ -1,5 +1,5 @@
-import { db, FarmEntity } from "../storage/db.js";
-import { nasaService } from "./nasaService.js";
+import { db, FarmEntity } from "../storage/db";
+import { nasaService } from "./nasaService";
 import {
   generateCropRotation,
   NasaContext,
@@ -83,3 +83,4 @@ export const recommendationService = {
     return { result, dataFreshness };
   },
 };
+

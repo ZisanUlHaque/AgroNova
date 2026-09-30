@@ -1,5 +1,5 @@
-import { db, NasaCacheEntity } from "../storage/db.js";
-import { config } from "../config.js";
+import { db, NasaCacheEntity } from "../storage/db";
+import { config } from "../config";
 
 export interface IngestResult {
   cache: NasaCacheEntity;
@@ -173,3 +173,4 @@ export const nasaService = {
     }
   },
 };
+

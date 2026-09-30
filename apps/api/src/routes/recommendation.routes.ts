@@ -1,8 +1,8 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { db } from "../storage/db.js";
-import { authenticate, AuthenticatedRequest, verifyFarmOwnership } from "../middlewares/auth.js";
-import { recommendationService } from "../services/recommendationService.js";
+import { db } from "../storage/db";
+import { authenticate, AuthenticatedRequest, verifyFarmOwnership } from "../middlewares/auth";
+import { recommendationService } from "../services/recommendationService";
 
 export const recommendationRouter = Router();
 
@@ -80,3 +80,4 @@ recommendationRouter.get("/farms/:id/rotations", authenticate, async (req: Authe
     });
   }
 });
+

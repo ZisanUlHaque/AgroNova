@@ -2,10 +2,10 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { db } from "../storage/db.js";
-import { config } from "../config.js";
-import { authRateLimiter } from "../middlewares/rateLimiter.js";
-import { authenticate, AuthenticatedRequest } from "../middlewares/auth.js";
+import { db } from "../storage/db";
+import { config } from "../config";
+import { authRateLimiter } from "../middlewares/rateLimiter";
+import { authenticate, AuthenticatedRequest } from "../middlewares/auth";
 
 export const authRouter = Router();
 
@@ -152,3 +152,4 @@ authRouter.get("/me", authenticate, async (req: AuthenticatedRequest, res: Respo
     },
   });
 });
+

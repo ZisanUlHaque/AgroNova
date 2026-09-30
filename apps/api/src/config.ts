@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 dotenv.config();
 
 export const config = {
-  port: parseInt(process.env.PORT || "4000", 10),
+  port: parseInt(process.env.PORT || "5000", 10),
   jwtSecret: process.env.JWT_SECRET || "terrashift-dev-secret-key-2026-agronova",
   jwtExpiresIn: "7d",
   bcryptCost: 12,
@@ -16,3 +16,4 @@ export const config = {
   earthdataUsername: process.env.EARTHDATA_USERNAME || "",
   earthdataPassword: process.env.EARTHDATA_PASSWORD || "",
 };
+

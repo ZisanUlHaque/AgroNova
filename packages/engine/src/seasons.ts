@@ -50,3 +50,4 @@ export function generateSeasonSlots(startDate: Date = new Date(), count: number 
 
   return slots;
 }
+

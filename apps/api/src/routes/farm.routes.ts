@@ -1,8 +1,8 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { db } from "../storage/db.js";
-import { authenticate, AuthenticatedRequest, verifyFarmOwnership } from "../middlewares/auth.js";
-import { nasaService } from "../services/nasaService.js";
+import { db } from "../storage/db";
+import { authenticate, AuthenticatedRequest, verifyFarmOwnership } from "../middlewares/auth";
+import { nasaService } from "../services/nasaService";
 
 export const farmRouter = Router();
 
@@ -217,3 +217,4 @@ farmRouter.delete("/:id", authenticate, async (req: AuthenticatedRequest, res: R
     });
   }
 });
+

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { config } from "../config.js";
-import { db } from "../storage/db.js";
+import { config } from "../config";
+import { db } from "../storage/db";
 
 export interface AuthUser {
   userId: string;
@@ -63,3 +63,4 @@ export async function verifyFarmOwnership(
 
   return true;
 }
+

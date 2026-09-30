@@ -99,7 +99,7 @@ npm install
 # 3. Build rotation engine
 npm run build:engine
 
-# 4. Start API backend (runs on http://localhost:4000)
+# 4. Start API backend (runs on http://localhost:5000)
 npm run dev:api
 
 # 5. In a second terminal, start Next.js PWA (runs on http://localhost:3000)
