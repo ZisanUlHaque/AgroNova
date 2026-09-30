@@ -1,0 +1,36 @@
+{
+  "name": "terrashift",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TerraShift - Adapting Farms with NASA Data (Team AgroNova, NASA Space Apps 2026)",
+  "workspaces": [
+    "packages/*",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:engine": "npm run --workspace=@terrashift/engine dev",
+    "build:engine": "npm run --workspace=@terrashift/engine build",
+    "test:engine": "npm run --workspace=@terrashift/engine test",
+    "dev:api": "npm run --workspace=@terrashift/api dev",
+    "build:api": "npm run --workspace=@terrashift/api build",
+    "test:api": "npm run --workspace=@terrashift/api test",
+    "dev:web": "npm run --workspace=@terrashift/web dev",
+    "build:web": "npm run --workspace=@terrashift/web build",
+    "test:worker": "pytest apps/worker/tests",
+    "test": "npm run test:engine && npm run test:api",
+    "build": "npm run build:engine && npm run build:api && npm run build:web"
+  },
+  "keywords": [
+    "nasa",
+    "space-apps-2026",
+    "agriculture",
+    "crop-rotation",
+    "smap",
+    "nasa-power",
+    "pwa",
+    "bangladesh"
+  ],
+  "author": "Team AgroNova",
+  "license": "MIT"
+}

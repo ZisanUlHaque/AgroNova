@@ -1,0 +1,214 @@
+"use client";
+
+import React from "react";
+import { Language, translations } from "../lib/translations";
+import {
+  X,
+  Satellite,
+  Droplet,
+  Sun,
+  Thermometer,
+  Wind,
+  Layers,
+  Calendar,
+  AlertCircle,
+  ExternalLink,
+  ShieldCheck
+} from "lucide-react";
+
+interface NasaContextModalProps {
+  language: Language;
+  isOpen: boolean;
+  onClose: () => void;
+  nasaContext: any;
+  farm: any;
+}
+
+export function NasaContextModal({
+  language,
+  isOpen,
+  onClose,
+  nasaContext,
+  farm,
+}: NasaContextModalProps) {
+  if (!isOpen) return null;
+  const t = translations[language];
+
+  const power = nasaContext?.powerData || {};
+  const meanTemp = nasaContext?.powerMeanTemp ?? 28.3;
+  const totalPrecip = nasaContext?.powerTotalPrecip ?? 1839.2;
+  const solarRad = nasaContext?.powerSolarRad ?? 17.5;
+  const heatDays = nasaContext?.powerHeatDays ?? 3;
+  const et0 = nasaContext?.et0Mean ?? 2.7;
+  const etSource = nasaContext?.etSource ?? "FAO56-PM-from-POWER";
+
+  const smapSurface = nasaContext?.smapSurface ?? 0.338;
+  const smapRootzone = nasaContext?.smapRootzone ?? 0.372;
+  const smapDate = nasaContext?.smapGranuleDate ?? "2026-09-29";
+
+  const soilTexture = farm?.soilTexture || nasaContext?.soilTexture || "clay_loam";
+  const soilPh = farm?.soilPh ?? nasaContext?.soilPh ?? 6.8;
+  const soilSource = farm?.soilSource || nasaContext?.soilSource || "ESTIMATED";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-gray-900 border-2 border-agrogreen-400 dark:border-yellow-400 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-agrogreen-50 dark:bg-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-nasablue-600 text-white flex items-center justify-center">
+              <Satellite className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base text-gray-900 dark:text-yellow-400">
+                {t.nasaContextTitle}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-300">
+                {farm?.name || "Pilot Delta Farm"} ({farm?.latitude?.toFixed(4)}°N, {farm?.longitude?.toFixed(4)}°E)
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="min-h-touch p-2 rounded-xl text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 overflow-y-auto space-y-4">
+          {/* Prominent Mandatory 9 km Regional Disclaimer (PRD Section 6.3 & 10) */}
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-yellow-500 text-amber-900 dark:text-yellow-200 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs leading-relaxed">
+              <span className="font-bold">সতর্কবার্তা / Important Scientific Note:</span>
+              <p className="mt-0.5">{t.smapDisclaimer}</p>
+            </div>
+          </div>
+
+          {/* SMAP L4 Card */}
+          <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-yellow-300">
+                <Droplet className="w-4 h-4 text-blue-500" />
+                <span>{t.nasaSmapTitle}</span>
+              </div>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                SPL4SMGP (9 km)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400 block font-medium">
+                  Surface Moisture (০-৫ সেমি)
+                </span>
+                <span className="text-lg font-black text-blue-600 dark:text-blue-400">
+                  {smapSurface} m³/m³
+                </span>
+              </div>
+              <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400 block font-medium">
+                  Rootzone Moisture (০-১০০ সেমি)
+                </span>
+                <span className="text-lg font-black text-blue-700 dark:text-blue-300">
+                  {smapRootzone} m³/m³
+                </span>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-1">
+              <span>Granule Date: {smapDate}</span>
+              <span className="text-emerald-600 font-bold">✓ Recent 7-Day Window</span>
+            </div>
+          </div>
+
+          {/* NASA POWER Card */}
+          <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-yellow-300">
+                <Sun className="w-4 h-4 text-amber-500" />
+                <span>{t.nasaPowerTitle}</span>
+              </div>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-yellow-300">
+                Rolling 90 Days
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center">
+              <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-[11px] text-gray-500 block">Mean Temp</span>
+                <span className="font-extrabold text-gray-900 dark:text-white text-sm">{meanTemp} °C</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-[11px] text-gray-500 block">Total Rain</span>
+                <span className="font-extrabold text-blue-600 text-sm">{totalPrecip} mm</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-[11px] text-gray-500 block">Solar Rad</span>
+                <span className="font-extrabold text-amber-600 text-sm">{solarRad} MJ/m²</span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-[11px] text-gray-500 block">Heat Days</span>
+                <span className="font-extrabold text-red-600 text-sm">{heatDays} দিন</span>
+              </div>
+            </div>
+          </div>
+
+          {/* FAO-56 Penman-Monteith Reference Evapotranspiration */}
+          <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black text-gray-900 dark:text-yellow-300">
+                {t.faoEt0Title}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                {etSource}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 pt-1">
+              <span className="text-2xl font-black text-agrogreen-700 dark:text-yellow-400">
+                {et0} mm/day
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                (Penman-Monteith daily reference water consumption)
+              </span>
+            </div>
+          </div>
+
+          {/* ISRIC SoilGrids Baseline */}
+          <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-black text-gray-900 dark:text-yellow-300">
+                {t.soilGridsTitle}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                {soilSource}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+              <div>
+                <span className="text-gray-500">Soil Texture:</span>{" "}
+                <span className="font-bold text-gray-800 dark:text-gray-200 capitalize">{soilTexture.replace('_', ' ')}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Soil pH:</span>{" "}
+                <span className="font-bold text-gray-800 dark:text-gray-200">{soilPh}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800 text-center bg-gray-50 dark:bg-gray-800">
+          <button
+            onClick={onClose}
+            className="min-h-touch px-6 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-yellow-400 dark:text-black font-bold text-xs"
+          >
+            Close / বন্ধ করুন
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

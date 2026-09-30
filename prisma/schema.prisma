@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  phone        String         @unique
+  fullName     String
+  passwordHash String
+  role         String         @default("farmer") // farmer | extension_officer
+  farms        Farm[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model Farm {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  latitude     Float
+  longitude    Float
+  areaHectares Float
+  soilTexture  String?        // clay | silty_clay | clay_loam | loam | sandy_loam
+  soilPh       Float?
+  soilSource   String         @default("ESTIMATED") // ESTIMATED | MEASURED | DEFAULT
+  boundary     Unsupported("geometry(Polygon, 4326)")?
+  nasaCache    NasaCache?
+  rotations    CropRotation[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([latitude, longitude])
+  @@map("farms")
+}
+
+model NasaCache {
+  id               String    @id @default(uuid())
+  farmId           String    @unique
+  farm             Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  powerData        Json?     // Aggregated / daily values from NASA POWER
+  powerMeanTemp    Float?
+  powerTotalPrecip Float?
+  powerSolarRad    Float?
+  powerHeatDays    Int?
+  powerFetchedAt   DateTime?
+  powerExpiresAt   DateTime?
+  smapSurface      Float?    // m3/m3 surface moisture (0-5 cm)
+  smapRootzone     Float?    // m3/m3 rootzone moisture (0-100 cm)
+  smapGranuleDate  String?
+  smapFetchedAt    DateTime?
+  smapExpiresAt    DateTime?
+  et0Mean          Float?    // mm/day reference ET
+  etSource         String?   @default("FAO56-PM-from-POWER")
+  soilData         Json?     // ISRIC SoilGrids baseline
+  isStale          Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("nasa_cache")
+}
+
+model CropRotation {
+  id                String   @id @default(uuid())
+  farmId            String
+  farm              Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  targetGoal        String   @default("BALANCED") // BALANCED | CONSERVE_WATER | RESTORE_NITROGEN
+  confidence        String   // HIGH | MEDIUM | LOW
+  seasons           Json     // 12-season array [{ year, season, cropId, cropName, reason, nFixRange, waterDemand, ... }]
+  alternativePlan   Json?    // Alternative 12-season array
+  inputsUsed        Json     // Snapshot of NASA + soil inputs used
+  waterSavingsRange String?
+  nitrogenGainRange String?
+  engineVersion     String   @default("3.0.0")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([farmId])
+  @@map("crop_rotations")
+}

@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: terrashift-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: terrashift
+      POSTGRES_PASSWORD: terrashift
+      POSTGRES_DB: terrashift
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U terrashift -d terrashift"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: terrashift-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: terrashift-api
+    restart: always
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://terrashift:terrashift@postgres:5432/terrashift
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-terrashift-secret-2026}
+      EARTHDATA_USERNAME: ${EARTHDATA_USERNAME:-}
+      EARTHDATA_PASSWORD: ${EARTHDATA_PASSWORD:-}
+      POWER_TTL_HOURS: 24
+      SMAP_TTL_DAYS: 7
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: apps/worker
+      dockerfile: Dockerfile
+    container_name: terrashift-worker
+    restart: always
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://terrashift:terrashift@postgres:5432/terrashift
+      EARTHDATA_USERNAME: ${EARTHDATA_USERNAME:-}
+      EARTHDATA_PASSWORD: ${EARTHDATA_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: terrashift-web
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,22 @@
+{
+  "name": "TerraShift - Field Shift with NASA Data",
+  "short_name": "TerraShift",
+  "description": "Climate-adaptive 4-year crop rotation decision support for smallholder delta farmers in Bangladesh",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#16a34a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

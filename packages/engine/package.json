@@ -1,0 +1,25 @@
+{
+  "name": "@terrashift/engine",
+  "version": "3.0.0",
+  "description": "Deterministic rule-based agronomic crop rotation engine for TerraShift",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "crop-rotation",
+    "agronomy",
+    "bangladesh",
+    "fao56",
+    "decision-support"
+  ],
+  "author": "Team AgroNova",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
