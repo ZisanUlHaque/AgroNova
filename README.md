@@ -93,20 +93,32 @@ terrashift/
 git clone https://github.com/AgroNova/terrashift.git
 cd terrashift
 
-# 2. Install monorepo dependencies
+# 2. Create local configuration; edit .env with your own JWT_SECRET.
+cp .env.example .env
+
+# 3. Install monorepo dependencies
 npm install
 
-# 3. Build rotation engine
+# 4. Build rotation engine
 npm run build:engine
 
-# 4. Start API backend (runs on http://localhost:5000)
+# 5. Install and start the NASA worker in its own terminal.
+#    EARTHDATA_USERNAME / EARTHDATA_PASSWORD are optional, but required for live SMAP.
+python -m pip install -r apps/worker/requirements.txt
+python apps/worker/worker.py --serve
+
+# 6. Start API backend (runs on http://localhost:5000)
 npm run dev:api
 
-# 5. In a second terminal, start Next.js PWA (runs on http://localhost:3000)
+# 7. In another terminal, start Next.js PWA (runs on http://localhost:3000)
 npm run dev:web
 ```
 
+The worker loads the root `.env` file. NASA POWER and SoilGrids do not require Earthdata credentials; without valid Earthdata credentials, SMAP is reported as unavailable rather than replaced with sample values. Register an account for a PostgreSQL-backed local run; the seeded Rafiq demo account is only available when the API is using its in-memory development store.
+
 ### Option B: Docker Compose (Full Stack with PostGIS & Redis)
+
+Copy `.env.example` to `.env` first, set a private `JWT_SECRET`, and optionally add NASA Earthdata credentials to enable live SMAP ingestion.
 
 ```bash
 # Start PostgreSQL/PostGIS, Redis, API, Worker, and Web frontend
@@ -115,6 +127,8 @@ docker compose up --build
 # Run initial PostGIS migration
 npx prisma migrate deploy
 ```
+
+NASA POWER is fetched for the saved farm coordinates. The latest two days are excluded to account for source latency; source failures remain explicitly unavailable and do not produce fabricated weather or soil-moisture observations. SMAP L4 is approximately 9 km resolution and is regional context, not a field measurement. SoilGrids is a digital-soil-map estimate, not a substitute for a laboratory soil test.
 
 ---
 

@@ -60,7 +60,7 @@ export interface NasaContext {
   etSource?: string | null;
   soilTexture?: string | null;
   soilPh?: number | null;
-  soilSource?: "ESTIMATED" | "MEASURED" | "DEFAULT";
+  soilSource?: "ESTIMATED" | "MEASURED" | "DEFAULT" | "PARTIAL";
 }
 
 export interface ScoringWeights {
@@ -131,4 +131,3 @@ export interface EngineResult {
   disclaimerEn: string;
   disclaimerBn: string;
 }
-

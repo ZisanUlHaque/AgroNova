@@ -226,6 +226,11 @@ export function PlanView({
             </div>
           </div>
         </div>
+        <p className="text-[11px] leading-5 text-gray-500 dark:text-gray-400">
+          {language === "bn"
+            ? "পানি সাশ্রয়ের পরিসরটি ফসল-আবর্তন ইঞ্জিনের তুলনামূলক পরিকল্পনা-অনুমান; এটি আপনার জমিতে মাপা সাশ্রয় বা সেচের পরিমাণ নয়। নাইট্রোজেনের পরিসরও ফসলের জৈব স্থিরীকরণ-সারণিভিত্তিক, মাটির পরীক্ষার ফল নয়।"
+            : "The water-saving range is a comparative planning estimate from the rotation engine, not measured savings or an irrigation prescription for this field. The nitrogen range is based on crop fixation ranges, not a soil test."}
+        </p>
       </div>
 
       {/* 4 Years Cards Grid */}
@@ -233,9 +238,9 @@ export function PlanView({
         {years.map(({ yearNumber, seasons }) => (
           <div
             key={yearNumber}
-            className="border-2 border-gray-200 dark:border-gray-800 rounded-3xl p-5 bg-white dark:bg-gray-900 shadow-sm"
+            className="plan-year-card border-2 border-gray-200 dark:border-gray-800 rounded-3xl p-5 bg-white dark:bg-gray-900 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="plan-year-heading flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-agrogreen-600 text-white dark:bg-yellow-400 dark:text-black font-black flex items-center justify-center text-sm shadow">
                   {yearNumber}
@@ -264,7 +269,7 @@ export function PlanView({
                 return (
                   <div
                     key={sIdx}
-                    className={`rounded-2xl p-4 border transition-all flex flex-col justify-between ${
+                    className={`plan-season-card ${isLegume ? "plan-season-legume" : "plan-season-standard"} rounded-2xl p-4 border transition-all flex flex-col justify-between ${
                       isLegume
                         ? "bg-emerald-50/60 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700"
                         : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
@@ -272,7 +277,7 @@ export function PlanView({
                   >
                     <div>
                       {/* Season Header */}
-                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
+                      <div className="plan-season-heading flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">
                         <span className="uppercase tracking-wide">{seasonLabel}</span>
                         {isLegume && (
                           <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
@@ -297,13 +302,13 @@ export function PlanView({
                       </div>
 
                       {/* Agronomic Reason */}
-                      <p className="text-xs text-gray-700 dark:text-gray-300 my-2 leading-relaxed bg-white/70 dark:bg-gray-900/70 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60">
+                      <p className="plan-season-reason text-xs text-gray-700 dark:text-gray-300 my-2 leading-relaxed bg-white/70 dark:bg-gray-900/70 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60">
                         {language === "bn" ? slot.reasonBn : slot.reasonEn}
                       </p>
                     </div>
 
                     {/* Metrics Footer */}
-                    <div className="pt-2 border-t border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                    <div className="plan-season-metrics pt-2 border-t border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between text-[11px] font-bold text-gray-600 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <Droplets className="w-3.5 h-3.5 text-blue-500" />
                         <span>সেচ {slot.waterDemand}/৫</span>

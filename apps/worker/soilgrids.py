@@ -1,4 +1,5 @@
 import requests
+import math
 from typing import Dict, Any
 
 SOILGRIDS_REST_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
@@ -54,17 +55,31 @@ def fetch_isric_soilgrids(latitude: float, longitude: float, timeout_sec: int = 
             if depths:
                 mean_val = depths[0].get("values", {}).get("mean")
                 extracted[name] = mean_val
-                
-        # SoilGrids returns pH * 10 (e.g. 65 = 6.5)
+        
+        def valid_value(value: Any, maximum: float) -> bool:
+            return (
+                isinstance(value, (int, float))
+                and math.isfinite(value)
+                and 0 <= value <= maximum
+            )
+
+        # SoilGrids reports pH multiplied by 10 and texture fractions in g/kg.
         raw_ph = extracted.get("phh2o")
-        ph = round(raw_ph / 10.0, 1) if raw_ph else 6.6
-        
-        # Textures returned in g/kg (divide by 10 for %)
-        clay_pct = (extracted.get("clay", 320) or 320) / 10.0
-        sand_pct = (extracted.get("sand", 280) or 280) / 10.0
-        silt_pct = (extracted.get("silt", 400) or 400) / 10.0
-        
-        texture_class = classify_usda_texture(sand_pct, clay_pct, silt_pct)
+        ph = round(raw_ph / 10.0, 1) if valid_value(raw_ph, 140) else None
+        clay_raw = extracted.get("clay")
+        sand_raw = extracted.get("sand")
+        silt_raw = extracted.get("silt")
+        clay_pct = clay_raw / 10.0 if valid_value(clay_raw, 1000) else None
+        sand_pct = sand_raw / 10.0 if valid_value(sand_raw, 1000) else None
+        silt_pct = silt_raw / 10.0 if valid_value(silt_raw, 1000) else None
+        texture_class = (
+            classify_usda_texture(sand_pct, clay_pct, silt_pct)
+            if clay_pct is not None and sand_pct is not None and silt_pct is not None
+            else None
+        )
+
+        if ph is None and texture_class is None:
+            return unavailable_soilgrids("SoilGrids returned no valid soil properties for this point.")
         
         return {
             "source": "ISRIC_SOILGRIDS_REST",
@@ -76,15 +91,21 @@ def fetch_isric_soilgrids(latitude: float, longitude: float, timeout_sec: int = 
             "siltPercent": silt_pct,
             "disclaimer": "SoilGrids baseline estimated from global digital soil mapping"
         }
-    except Exception as e:
-        # Fallback to authentic Bangladesh delta alluvium profile (clay loam, pH 6.8)
-        return {
-            "source": "DELTA_ALLUVIUM_BASELINE_FALLBACK",
-            "soilSource": "ESTIMATED",
-            "soilPh": 6.8,
-            "soilTexture": "clay_loam",
-            "clayPercent": 34.0,
-            "sandPercent": 26.0,
-            "siltPercent": 40.0,
-            "disclaimer": "Default Bangladesh delta alluvial soil baseline"
-        }
+    except Exception as error:
+        return unavailable_soilgrids(
+            f"SoilGrids query failed ({type(error).__name__}); no default soil values were substituted."
+        )
+
+
+def unavailable_soilgrids(warning: str) -> Dict[str, Any]:
+    return {
+        "source": "ISRIC_SOILGRIDS_UNAVAILABLE",
+        "soilSource": "UNAVAILABLE",
+        "soilPh": None,
+        "soilTexture": None,
+        "clayPercent": None,
+        "sandPercent": None,
+        "siltPercent": None,
+        "warning": warning,
+        "disclaimer": "SoilGrids data are unavailable; a field or laboratory soil test is recommended.",
+    }

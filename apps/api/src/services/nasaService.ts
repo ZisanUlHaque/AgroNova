@@ -1,176 +1,396 @@
 import { db, NasaCacheEntity } from "../storage/db";
 import { config } from "../config";
 
-export interface IngestResult {
-  cache: NasaCacheEntity;
-  isFresh: boolean;
-  source: string;
+const POWER_ENDPOINT = "https://power.larc.nasa.gov/api/temporal/daily/point";
+const POWER_PARAMETERS = [
+  "T2M",
+  "T2M_MAX",
+  "T2M_MIN",
+  "T2MDEW",
+  "PRECTOTCORR",
+  "ALLSKY_SFC_SW_DWN",
+  "WS2M",
+];
+
+type PowerParameters = Record<string, Record<string, number>>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * Computes FAO-56 Penman-Monteith reference evapotranspiration in TypeScript
- */
-export function computeDailyEt0(
+function extractPowerParameters(payload: unknown): PowerParameters {
+  if (!isRecord(payload) || !isRecord(payload.properties) || !isRecord(payload.properties.parameter)) {
+    throw new Error("NASA POWER response did not include daily parameter series");
+  }
+
+  const parameters = payload.properties.parameter;
+  for (const parameter of POWER_PARAMETERS) {
+    const series = parameters[parameter];
+    if (
+      !isRecord(series) ||
+      !Object.values(series).every((value) => typeof value === "number" && Number.isFinite(value))
+    ) {
+      throw new Error(`NASA POWER response is missing or has invalid ${parameter} observations`);
+    }
+  }
+  return parameters as PowerParameters;
+}
+
+function saturationVaporPressure(temperature: number): number {
+  return 0.6108 * Math.exp((17.27 * temperature) / (temperature + 237.3));
+}
+
+function computeDailyEt0(
   tMax: number,
   tMin: number,
-  rhMean: number,
-  u2: number,
-  solarRadMjM2: number,
-  elevationM: number = 10.0
+  dewPoint: number,
+  windSpeed: number,
+  solarRadiation: number,
+  latitude: number,
+  dayOfYear: number,
+  elevation = 10
 ): number {
-  const tMean = (tMax + tMin) / 2.0;
-
-  // FAO-56 eq 11
-  const esMax = 0.6108 * Math.exp((17.27 * tMax) / (tMax + 237.3));
-  const esMin = 0.6108 * Math.exp((17.27 * tMin) / (tMin + 237.3));
-  const es = (esMax + esMin) / 2.0;
-
-  const ea = es * (Math.max(1.0, Math.min(100.0, rhMean)) / 100.0);
-  const vpd = Math.max(0.0, es - ea);
-
-  // FAO-56 eq 13
-  const delta = (4098.0 * (0.6108 * Math.exp((17.27 * tMean) / (tMean + 237.3)))) / Math.pow(tMean + 237.3, 2);
-
-  // Atmospheric pressure & psychrometric constant
-  const pressure = 101.3 * Math.pow((293.0 - 0.0065 * elevationM) / 293.0, 5.26);
+  const meanTemperature = (tMax + tMin) / 2;
+  const es = (saturationVaporPressure(tMax) + saturationVaporPressure(tMin)) / 2;
+  const ea = saturationVaporPressure(dewPoint);
+  const vpd = Math.max(0, es - ea);
+  const delta =
+    (4098 * saturationVaporPressure(meanTemperature)) /
+    Math.pow(meanTemperature + 237.3, 2);
+  const pressure = 101.3 * Math.pow((293 - 0.0065 * elevation) / 293, 5.26);
   const gamma = 0.000665 * pressure;
 
-  const rn = 0.6 * Math.max(0.0, solarRadMjM2);
-  const wind = Math.max(0.2, u2);
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  const inverseDistance = 1 + 0.033 * Math.cos((2 * Math.PI * dayOfYear) / 365);
+  const solarDeclination = 0.409 * Math.sin((2 * Math.PI * dayOfYear) / 365 - 1.39);
+  const sunsetArgument = Math.max(
+    -1,
+    Math.min(1, -Math.tan(latitudeRadians) * Math.tan(solarDeclination))
+  );
+  const sunsetAngle = Math.acos(sunsetArgument);
+  const extraterrestrialRadiation =
+    ((24 * 60) / Math.PI) *
+    0.082 *
+    inverseDistance *
+    (sunsetAngle * Math.sin(latitudeRadians) * Math.sin(solarDeclination) +
+      Math.cos(latitudeRadians) * Math.cos(solarDeclination) * Math.sin(sunsetAngle));
+  const solar = Math.max(0, solarRadiation);
+  const clearSkyRadiation = (0.75 + 2e-5 * elevation) * extraterrestrialRadiation;
+  const netShortwave = 0.77 * solar;
+  const netLongwave =
+    clearSkyRadiation > 0
+      ? 4.903e-9 *
+        ((Math.pow(tMax + 273.16, 4) + Math.pow(tMin + 273.16, 4)) / 2) *
+        (0.34 - 0.14 * Math.sqrt(Math.max(0, ea))) *
+        (1.35 * Math.min(solar / clearSkyRadiation, 1) - 0.35)
+      : 0;
+  const netRadiation = netShortwave - netLongwave;
+  const u2 = Math.max(0.2, windSpeed);
+  const numerator =
+    0.408 * delta * netRadiation +
+    gamma * (900 / (meanTemperature + 273)) * u2 * vpd;
+  const denominator = delta + gamma * (1 + 0.34 * u2);
+  return Math.max(0, Number((numerator / denominator).toFixed(2)));
+}
 
-  const num = 0.408 * delta * rn + gamma * (900.0 / (tMean + 273.0)) * wind * vpd;
-  const den = delta + gamma * (1.0 + 0.34 * wind);
+function valid(value: number | undefined): value is number {
+  return value !== undefined && value > -900;
+}
 
-  return Math.max(0.1, Number((num / den).toFixed(2)));
+function asDate(value: unknown, fallback: Date): Date {
+  if (typeof value !== "string") return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
+async function fetchPower(latitude: number, longitude: number): Promise<Record<string, any>> {
+  const now = new Date();
+  const end = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const start = new Date(end.getTime() - 89 * 24 * 60 * 60 * 1000);
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10).replace(/-/g, "");
+  const url = new URL(POWER_ENDPOINT);
+  url.search = new URLSearchParams({
+    parameters: POWER_PARAMETERS.join(","),
+    community: "AG",
+    latitude: latitude.toFixed(4),
+    longitude: longitude.toFixed(4),
+    start: formatDate(start),
+    end: formatDate(end),
+    format: "JSON",
+  }).toString();
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) {
+    throw new Error(`NASA POWER returned HTTP ${response.status} ${response.statusText}`);
+  }
+  const params = extractPowerParameters(await response.json());
+  const dates = Object.keys(params.T2M).sort();
+  if (dates.length === 0) throw new Error("NASA POWER returned no observations for this location");
+
+  const aggregates = {
+    temperature: [] as number[],
+    precipitation: [] as number[],
+    solar: [] as number[],
+    maximumTemperature: [] as number[],
+    et0: [] as number[],
+  };
+  const dailySummary: Record<string, number | string | null>[] = [];
+
+  for (const date of dates) {
+    const t = params.T2M[date];
+    const max = params.T2M_MAX[date];
+    const min = params.T2M_MIN[date];
+    const dewPoint = params.T2MDEW[date];
+    const precipitation = params.PRECTOTCORR[date];
+    const solar = params.ALLSKY_SFC_SW_DWN[date];
+    const wind = params.WS2M[date];
+    if (valid(t)) aggregates.temperature.push(t);
+    if (valid(precipitation)) aggregates.precipitation.push(Math.max(0, precipitation));
+    if (valid(solar)) aggregates.solar.push(Math.max(0, solar));
+    if (valid(max)) aggregates.maximumTemperature.push(max);
+    const dayNumber = Math.floor(
+      (Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8))) -
+        Date.UTC(Number(date.slice(0, 4)), 0, 0)) /
+        86_400_000
+    );
+    const dailyEt0 =
+      valid(max) && valid(min) && valid(dewPoint) && valid(wind) && valid(solar)
+        ? computeDailyEt0(max, min, dewPoint, wind, solar, latitude, dayNumber)
+        : null;
+    if (dailyEt0 != null) aggregates.et0.push(dailyEt0);
+    dailySummary.push({
+      date,
+      t2m: valid(t) ? t : null,
+      t2m_max: valid(max) ? max : null,
+      t2m_min: valid(min) ? min : null,
+      precipitation: valid(precipitation) ? Math.max(0, precipitation) : null,
+      solarRadiation: valid(solar) ? Math.max(0, solar) : null,
+      et0: dailyEt0,
+    });
+  }
+
+  if (aggregates.temperature.length === 0) {
+    throw new Error("NASA POWER returned no valid temperature observations");
+  }
+  const mean = (values: number[]) =>
+    values.length
+      ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2))
+      : null;
+  return {
+    source: "NASA_POWER_LIVE",
+    product: "POWER Daily Point (AG)",
+    parameters: POWER_PARAMETERS,
+    latitude,
+    longitude,
+    startDate: formatDate(start),
+    endDate: formatDate(end),
+    daysCount: dates.length,
+    validTemperatureDays: aggregates.temperature.length,
+    validPrecipitationDays: aggregates.precipitation.length,
+    validSolarDays: aggregates.solar.length,
+    validEt0Days: aggregates.et0.length,
+    meanTemp: mean(aggregates.temperature),
+    totalPrecip:
+      aggregates.precipitation.length
+        ? Number(aggregates.precipitation.reduce((sum, value) => sum + value, 0).toFixed(2))
+        : null,
+    meanSolarRad: mean(aggregates.solar),
+    recentMaxTemp: aggregates.maximumTemperature.length
+      ? Number(Math.max(...aggregates.maximumTemperature).toFixed(2))
+      : null,
+    heatDays: aggregates.maximumTemperature.filter((value) => value >= 33).length,
+    et0Mean: mean(aggregates.et0),
+    etSource: "FAO56-PM-from-POWER (T2MDEW, WS2M, shortwave radiation)",
+    fetchedAt: now.toISOString(),
+    dailySummary: dailySummary.slice(-14),
+  };
+}
+
+function failedPower(error: unknown, latitude: number, longitude: number) {
+  const detail = error instanceof Error ? error.message : String(error);
+  return {
+    source: "NASA_POWER_UNAVAILABLE",
+    product: "POWER Daily Point (AG)",
+    latitude,
+    longitude,
+    meanTemp: null,
+    totalPrecip: null,
+    meanSolarRad: null,
+    recentMaxTemp: null,
+    heatDays: null,
+    et0Mean: null,
+    daysCount: 0,
+    fetchedAt: new Date().toISOString(),
+    warning: detail,
+    dailySummary: [],
+  };
+}
+
+async function fetchWorkerIngest(latitude: number, longitude: number): Promise<Record<string, any>> {
+  if (!config.nasaIngestWorkerUrl) {
+    throw new Error("NASA ingest worker is not configured");
+  }
+  const baseUrl = config.nasaIngestWorkerUrl.replace(/\/+$/, "");
+  const response = await fetch(`${baseUrl}/v1/ingest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ latitude, longitude }),
+    signal: AbortSignal.timeout(config.nasaIngestTimeoutMs),
+  });
+  if (!response.ok) {
+    throw new Error(`NASA ingest worker returned HTTP ${response.status}`);
+  }
+  const data: unknown = await response.json();
+  if (!isRecord(data)) throw new Error("NASA ingest worker returned an invalid response");
+  return data;
+}
+
+function ageMs(date: Date | null, now: number): number {
+  return date ? now - date.getTime() : Number.POSITIVE_INFINITY;
 }
 
 export const nasaService = {
-  isCacheFresh(cache: NasaCacheEntity | null): boolean {
-    if (!cache || !cache.powerFetchedAt || !cache.smapFetchedAt) return false;
-    const now = new Date().getTime();
-    const powerAgeHours = (now - new Date(cache.powerFetchedAt).getTime()) / (1000 * 3600);
-    const smapAgeDays = (now - new Date(cache.smapFetchedAt).getTime()) / (1000 * 3600 * 24);
-
-    return powerAgeHours <= config.powerTtlHours && smapAgeDays <= config.smapTtlDays;
+  isPowerFresh(cache: NasaCacheEntity | null): boolean {
+    return Boolean(
+      cache?.powerData?.source === "NASA_POWER_LIVE" &&
+        ageMs(cache.powerFetchedAt, Date.now()) <= config.powerTtlHours * 3_600_000
+    );
   },
 
-  async ingestForFarm(farmId: string, latitude: number, longitude: number, forceRefresh: boolean = false): Promise<NasaCacheEntity> {
+  isSmapFresh(cache: NasaCacheEntity | null): boolean {
+    return Boolean(
+      cache?.smapData?.source === "NASA_EARTHDATA_LIVE" &&
+        ageMs(cache.smapFetchedAt, Date.now()) <= config.smapTtlDays * 86_400_000
+    );
+  },
+
+  isCacheFresh(cache: NasaCacheEntity | null): boolean {
+    if (!cache) return false;
+    const now = Date.now();
+    const powerAttemptFresh =
+      ageMs(cache.powerFetchedAt, now) <= config.powerTtlHours * 3_600_000;
+    const smapAttemptFresh =
+      ageMs(cache.smapFetchedAt, now) <= config.smapTtlDays * 86_400_000;
+    return powerAttemptFresh && smapAttemptFresh;
+  },
+
+  async ingestForFarm(
+    farmId: string,
+    latitude: number,
+    longitude: number,
+    forceRefresh = false
+  ): Promise<NasaCacheEntity> {
     const existing = await db.getNasaCache(farmId);
-    if (!forceRefresh && existing && this.isCacheFresh(existing)) {
+    const seededDemo = existing?.powerData?.source === "NASA_POWER_DEMO_FALLBACK";
+    const now = new Date();
+    const powerAttemptFresh =
+      existing && ageMs(existing.powerFetchedAt, now.getTime()) <= config.powerTtlHours * 3_600_000;
+    const smapAttemptFresh =
+      existing && ageMs(existing.smapFetchedAt, now.getTime()) <= config.smapTtlDays * 86_400_000;
+    if (!forceRefresh && existing && !seededDemo && powerAttemptFresh && smapAttemptFresh) {
       return existing;
     }
 
-    try {
-      // 1. Fetch live NASA POWER (90 days rolling)
-      const now = new Date();
-      const end = new Date(now.getTime() - 2 * 24 * 3600 * 1000); // 2-day lag
-      const start = new Date(end.getTime() - 90 * 24 * 3600 * 1000);
-
-      const fmt = (d: Date) =>
-        `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-
-      const powerUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M,T2M_MAX,T2M_MIN,PRECTOTCORR,ALLSKY_SFC_SW_DWN,RH2M,WS2M&community=AG&latitude=${latitude.toFixed(4)}&longitude=${longitude.toFixed(4)}&start=${fmt(start)}&end=${fmt(end)}&format=JSON`;
-
-      let powerMeanTemp = 28.3;
-      let powerTotalPrecip = 1839.2;
-      let powerSolarRad = 17.5;
-      let powerHeatDays = 3;
-      let et0Mean = 2.7;
-      let powerData: any = { source: "NASA_POWER_LIVE" };
-
+    let workerData: Record<string, any> | null = null;
+    let workerWarning: string | null = null;
+    if (config.nasaIngestWorkerUrl && (forceRefresh || !existing || !smapAttemptFresh)) {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(powerUrl, { signal: controller.signal });
-        clearTimeout(timeout);
-
-        if (res.ok) {
-          const json = await res.json();
-          const params = json?.properties?.parameter || {};
-          const t2m = params.T2M || {};
-          const t2mMax = params.T2M_MAX || {};
-          const t2mMin = params.T2M_MIN || {};
-          const prec = params.PRECTOTCORR || {};
-          const solar = params.ALLSKY_SFC_SW_DWN || {};
-          const rh = params.RH2M || {};
-          const ws = params.WS2M || {};
-
-          const dates = Object.keys(t2m);
-          let sumT = 0, countT = 0;
-          let sumP = 0;
-          let sumS = 0, countS = 0;
-          let heatCount = 0;
-          const et0s: number[] = [];
-
-          for (const d of dates) {
-            const t = t2m[d];
-            const mx = t2mMax[d];
-            const mn = t2mMin[d];
-            const p = prec[d];
-            const s = solar[d];
-            const r = rh[d];
-            const w = ws[d];
-
-            if (t != null && t > -900) { sumT += t; countT++; }
-            if (p != null && p > -900) { sumP += Math.max(0, p); }
-            if (s != null && s > -900) { sumS += Math.max(0, s); }
-            if (mx != null && mx > -900 && mx >= 33.0) { heatCount++; }
-
-            if (mx > -900 && mn > -900 && r > -900 && w > -900 && s > -900) {
-              et0s.push(computeDailyEt0(mx, mn, r, w, s));
-            }
-          }
-
-          if (countT > 0) powerMeanTemp = Number((sumT / countT).toFixed(2));
-          powerTotalPrecip = Number(sumP.toFixed(2));
-          if (countS > 0) powerSolarRad = Number((sumS / countS).toFixed(2));
-          powerHeatDays = heatCount;
-          if (et0s.length > 0) {
-            et0Mean = Number((et0s.reduce((a, b) => a + b, 0) / et0s.length).toFixed(2));
-          }
-          powerData = { source: "NASA_POWER_LIVE", daysCount: dates.length };
-        }
-      } catch (err) {
-        // use authentic delta baseline
-        powerData = { source: "NASA_POWER_FALLBACK_BASELINE" };
+        workerData = await fetchWorkerIngest(latitude, longitude);
+      } catch (error) {
+        workerWarning = error instanceof Error ? error.message : String(error);
+        console.warn(`NASA worker ingest failed for farm ${farmId}: ${workerWarning}`);
       }
-
-      // 2. SMAP L4 extraction (Barisal delta reference / spatial gradient)
-      const baseSurface = latitude > 24.0 ? 0.285 : 0.338;
-      const baseRootzone = latitude > 24.0 ? 0.310 : 0.372;
-      const granuleDate = new Date(now.getTime() - 24 * 3600 * 1000).toISOString().split("T")[0];
-
-      // 3. Soil baseline (ISRIC SoilGrids)
-      const soilTexture = "clay_loam";
-      const soilPh = 6.8;
-
-      const powerExpires = new Date(now.getTime() + config.powerTtlHours * 3600 * 1000);
-      const smapExpires = new Date(now.getTime() + config.smapTtlDays * 24 * 3600 * 1000);
-
-      const savedCache = await db.upsertNasaCache(farmId, {
-        powerData,
-        powerMeanTemp,
-        powerTotalPrecip,
-        powerSolarRad,
-        powerHeatDays,
-        powerFetchedAt: now,
-        powerExpiresAt: powerExpires,
-        smapSurface: baseSurface,
-        smapRootzone: baseRootzone,
-        smapGranuleDate: granuleDate,
-        smapFetchedAt: now,
-        smapExpiresAt: smapExpires,
-        et0Mean,
-        etSource: "FAO56-PM-from-POWER",
-        soilData: { texture: soilTexture, ph: soilPh, source: "ESTIMATED" },
-        isStale: false,
-      });
-
-      return savedCache;
-    } catch (e) {
-      if (existing) return existing;
-      throw e;
     }
+
+    const workerPowerData = workerData?.powerData as Record<string, any> | undefined;
+    let powerData =
+      workerPowerData?.source === "NASA_POWER_LIVE" ? workerPowerData : undefined;
+    if (!powerData && (forceRefresh || !powerAttemptFresh || seededDemo)) {
+      try {
+        powerData = await fetchPower(latitude, longitude);
+      } catch (error) {
+        if (existing?.powerData?.source === "NASA_POWER_LIVE") {
+          const detail = error instanceof Error ? error.message : String(error);
+          powerData = {
+            ...existing.powerData,
+            refreshWarning: `NASA POWER refresh failed; retaining the previous observation: ${detail}`,
+          };
+        } else {
+          powerData = failedPower(error, latitude, longitude);
+          console.warn(`NASA POWER fetch failed for farm ${farmId}: ${powerData.warning}`);
+        }
+      }
+    }
+    if (workerPowerData?.warning && powerData?.source === "NASA_POWER_LIVE") {
+      powerData = { ...powerData, workerWarning: workerPowerData.warning };
+    }
+    if (!powerData && existing) powerData = existing.powerData;
+    if (!powerData) powerData = failedPower(new Error("No NASA POWER observation is cached"), latitude, longitude);
+    if (workerWarning && powerData.source === "NASA_POWER_LIVE") {
+      powerData = { ...powerData, workerWarning };
+    }
+
+    const powerFetchedAt =
+      powerData.source === "NASA_POWER_LIVE" || powerData.source === "NASA_POWER_UNAVAILABLE"
+        ? asDate(powerData.fetchedAt, now)
+        : existing?.powerFetchedAt ?? null;
+
+    const workerSmapData = workerData?.smapData as Record<string, any> | undefined;
+    let smapData =
+      workerSmapData?.source === "NASA_EARTHDATA_LIVE" ? workerSmapData : undefined;
+    if (!smapData && existing?.smapData?.source === "NASA_EARTHDATA_LIVE") {
+      smapData = {
+        ...existing.smapData,
+        ...(workerWarning || workerSmapData?.warning
+          ? { refreshWarning: workerWarning || workerSmapData?.warning }
+          : {}),
+      };
+    }
+    if (!smapData && workerSmapData) smapData = workerSmapData;
+    if (!smapData) {
+      smapData = {
+        source: "NASA_EARTHDATA_NOT_CONFIGURED",
+        product: "SPL4SMGP",
+        resolution: "9 km",
+        smSurface: null,
+        smRootzone: null,
+        fetchedAt: now.toISOString(),
+        warning: config.nasaIngestWorkerUrl
+          ? workerWarning || "NASA worker did not return SMAP data."
+          : "Configure the NASA ingest worker and Earthdata credentials to retrieve live SMAP data.",
+      };
+    }
+    const smapFetchedAt =
+      smapData.source === "NASA_EARTHDATA_LIVE" && existing?.smapData?.source === "NASA_EARTHDATA_LIVE" && smapData === existing.smapData
+        ? existing.smapFetchedAt ?? now
+        : workerData && smapData.fetchedAt
+          ? asDate(smapData.fetchedAt, now)
+          : existing?.smapFetchedAt ?? now;
+    const soilData = workerData?.soilData ?? existing?.soilData ?? null;
+    const fetchedPowerAt = asDate(powerData.fetchedAt, now);
+    const powerExpiresAt = new Date(fetchedPowerAt.getTime() + config.powerTtlHours * 3_600_000);
+    const smapExpiresAt = new Date(smapFetchedAt.getTime() + config.smapTtlDays * 86_400_000);
+
+    return db.upsertNasaCache(farmId, {
+      powerData,
+      powerMeanTemp: typeof powerData.meanTemp === "number" ? powerData.meanTemp : null,
+      powerTotalPrecip: typeof powerData.totalPrecip === "number" ? powerData.totalPrecip : null,
+      powerSolarRad: typeof powerData.meanSolarRad === "number" ? powerData.meanSolarRad : null,
+      powerHeatDays: typeof powerData.heatDays === "number" ? powerData.heatDays : null,
+      powerFetchedAt,
+      powerExpiresAt,
+      smapData,
+      smapSurface: typeof smapData.smSurface === "number" ? smapData.smSurface : null,
+      smapRootzone: typeof smapData.smRootzone === "number" ? smapData.smRootzone : null,
+      smapGranuleDate: typeof smapData.smapGranuleDate === "string" ? smapData.smapGranuleDate : null,
+      smapFetchedAt,
+      smapExpiresAt,
+      et0Mean: typeof powerData.et0Mean === "number" ? powerData.et0Mean : null,
+      etSource: typeof powerData.etSource === "string" ? powerData.etSource : "UNAVAILABLE",
+      soilData,
+      isStale:
+        powerData.source !== "NASA_POWER_LIVE" ||
+        smapData.source !== "NASA_EARTHDATA_LIVE",
+    });
   },
 };
-

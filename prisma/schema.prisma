@@ -54,6 +54,7 @@ model NasaCache {
   powerExpiresAt   DateTime?
   smapSurface      Float?    // m3/m3 surface moisture (0-5 cm)
   smapRootzone     Float?    // m3/m3 rootzone moisture (0-100 cm)
+  smapData         Json?     // Product version, granule, sampled cell, source, and quality metadata
   smapGranuleDate  String?
   smapFetchedAt    DateTime?
   smapExpiresAt    DateTime?

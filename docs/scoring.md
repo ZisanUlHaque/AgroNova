@@ -94,12 +94,12 @@ To prevent overpromising and ensure scientific transparency:
 - **HIGH**:
   - NASA POWER data is fresh ($< 24\ \text{hours}$).
   - NASA SMAP L4 soil moisture is fresh ($< 7\ \text{days}$).
-  - Farmer has entered lab or field-tested soil pH / texture (`MEASURED`).
+  - Farmer has entered both field-tested soil pH and texture (`MEASURED`).
 - **MEDIUM**:
   - Live NASA satellite climate and SMAP moisture are fresh.
-  - Soil baseline is derived from ISRIC SoilGrids global digital soil mapping (`ESTIMATED`).
+  - SoilGrids provides an estimated baseline (`ESTIMATED`), only some farmer soil values are available (`PARTIAL`), or no soil values are available (`DEFAULT`).
 - **LOW**:
-  - Any NASA satellite source is missing, stale, or network-disconnected. Default climatological baselines are utilized.
+  - Any required NASA satellite source is missing, stale, or network-disconnected. The engine uses its documented default input assumptions; stale observations are excluded from scoring.
 
 ---
 
@@ -107,5 +107,6 @@ To prevent overpromising and ensure scientific transparency:
 
 In compliance with PRD Section 7.3:
 - Estimates of **water savings** and **nitrogen gains** are always presented as **honest ranges** (e.g. *"15% – 25% lower irrigation demand"* and *"45 – 70 kg biological N/ha per year"*), never single deterministic numbers that mislead farmers.
+- Water-savings ranges are rule-engine comparison scenarios, not measured farm savings or irrigation volumes. Nitrogen ranges are based on crop fixation ranges, not a soil test.
 - The UI explicitly highlights:
   > **"NASA SMAP 9 km soil moisture provides regional hydrological context, not field truth."**

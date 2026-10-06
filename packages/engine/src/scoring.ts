@@ -64,7 +64,8 @@ export function calculateWaterFit(crop: Crop, context: NasaContext, slot: Season
 
 /**
  * Soil Fit (0 to 1):
- * texture and pH matching. Neutral 0.5 if soil is default/estimated.
+ * texture and pH matching. Defaults are neutral; estimated/partial inputs are
+ * dampened toward neutral.
  */
 export function calculateSoilFit(crop: Crop, context: NasaContext): number {
   if (context.soilSource === "DEFAULT" || !context.soilTexture) {
@@ -96,7 +97,7 @@ export function calculateSoilFit(crop: Crop, context: NasaContext): number {
 
   // If soil was estimated from SoilGrids, scale confidence towards 0.7
   const baseFit = textureScore * 0.6 + phScore * 0.4;
-  if (context.soilSource === "ESTIMATED") {
+  if (context.soilSource === "ESTIMATED" || context.soilSource === "PARTIAL") {
     return 0.5 + (baseFit - 0.5) * 0.6; // slightly dampened toward neutral
   }
 
@@ -213,10 +214,26 @@ export function determineConfidence(context: NasaContext): {
     };
   }
 
+  if (context.soilSource === "PARTIAL") {
+    return {
+      level: "MEDIUM",
+      reasonEn: "Live NASA climate and 9 km SMAP context are available; only the farmer-provided soil properties are used, and missing soil values remain unknown.",
+      reasonBn: "লাইভ নাসা আবহাওয়া ও ৯ কিমি এসএমএপি প্রেক্ষাপট আছে; কৃষকের দেওয়া মাটির তথ্যই ব্যবহৃত হয়েছে এবং অজানা মান অজানাই রাখা হয়েছে।",
+    };
+  }
+
+  if (context.soilSource === "ESTIMATED") {
+    return {
+      level: "MEDIUM",
+      reasonEn: "Live NASA climate and 9 km SMAP rootzone moisture are matched with an estimated ISRIC SoilGrids baseline.",
+      reasonBn: "লাইভ নাসা আবহাওয়া ও ৯ কিমি এসএমএপি মাটির আর্দ্রতার সাথে ISRIC SoilGrids-এর আনুমানিক মাটির তথ্য মিলিয়ে তৈরি।",
+    };
+  }
+
   return {
     level: "MEDIUM",
-    reasonEn: "Live NASA climate and 9 km SMAP rootzone moisture matched with estimated ISRIC soil baseline.",
-    reasonBn: "লাইভ নাসা আবহাওয়া ও ৯ কিমি এসএমএপি মাটির আর্দ্রতা এবং আনুমানিক মাটির তথ্যের ভিত্তিতে তৈরি।",
+    reasonEn: "Live NASA climate and 9 km SMAP context are available; soil properties were unavailable, so neutral soil scoring was used.",
+    reasonBn: "লাইভ নাসা আবহাওয়া ও ৯ কিমি এসএমএপি প্রেক্ষাপট আছে; মাটির তথ্য অনুপস্থিত থাকায় নিরপেক্ষ মাটি-স্কোর ব্যবহার করা হয়েছে।",
   };
 }
 
@@ -338,4 +355,3 @@ export function scoreCandidateSequence(
     },
   };
 }
-

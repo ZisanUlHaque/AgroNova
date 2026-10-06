@@ -1,92 +1,155 @@
-import os
 import datetime
-from typing import Dict, Any, Optional
+import os
+import re
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-PILOT_BARISAL_SMAP = {
-    "latitude": 22.7010,
-    "longitude": 90.3535,
-    "product": "SPL4SMGP",
-    "resolution": "9 km",
-    "granuleId": "SMAP_L4_SM_gph_20260928T000000_Vv7032_001.h5",
-    "smapGranuleDate": "2026-09-28",
-    "smSurface": 0.338,   # m3/m3 surface soil moisture (0-5 cm)
-    "smRootzone": 0.372,  # m3/m3 rootzone soil moisture (0-100 cm)
-    "soilTemperatureL1": 28.4, # Celsius
-    "qualityFlag": 0,    # Good quality
-    "isDemoFallback": True,
-    "disclaimer": "9 km regional hydrological context, not field truth"
-}
+import numpy as np
+
+
+def unavailable_smap(warning: str) -> Dict[str, Any]:
+    return {
+        "source": "NASA_EARTHDATA_UNAVAILABLE",
+        "product": "SPL4SMGP",
+        "resolution": "9 km",
+        "smSurface": None,
+        "smRootzone": None,
+        "smapGranuleDate": None,
+        "fetchedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "warning": warning,
+        "disclaimer": "SMAP L4 9 km data are regional hydrological context, not field truth.",
+    }
+
+
+def extract_nearest_smap_cell(
+    granule_path: str,
+    latitude: float,
+    longitude: float,
+    granule_metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    import h5py
+
+    with h5py.File(granule_path, "r") as granule:
+        required_paths = (
+            "cell_lat",
+            "cell_lon",
+            "Geophysical_Data/sm_surface",
+            "Geophysical_Data/sm_rootzone",
+        )
+        if any(path not in granule for path in required_paths):
+            raise ValueError("SMAP granule is missing required geolocation or moisture datasets")
+
+        cell_lat = np.asarray(granule["cell_lat"][:], dtype=np.float64)
+        cell_lon = np.asarray(granule["cell_lon"][:], dtype=np.float64)
+        surface = np.asarray(granule["Geophysical_Data/sm_surface"][:], dtype=np.float64)
+        rootzone = np.asarray(granule["Geophysical_Data/sm_rootzone"][:], dtype=np.float64)
+        if not (cell_lat.shape == cell_lon.shape == surface.shape == rootzone.shape):
+            raise ValueError("SMAP geolocation and soil-moisture grids have mismatched dimensions")
+
+        valid = (
+            np.isfinite(cell_lat)
+            & np.isfinite(cell_lon)
+            & np.isfinite(surface)
+            & np.isfinite(rootzone)
+            & (surface >= 0.0)
+            & (surface <= 1.0)
+            & (rootzone >= 0.0)
+            & (rootzone <= 1.0)
+        )
+        if not np.any(valid):
+            raise ValueError("SMAP granule contains no valid surface/rootzone moisture cells")
+
+        lon_delta = (cell_lon - longitude + 180.0) % 360.0 - 180.0
+        lat_delta = cell_lat - latitude
+        distance_squared = (
+            lat_delta * lat_delta
+            + (lon_delta * np.cos(np.radians(latitude))) ** 2
+        )
+        distance_squared[~valid] = np.inf
+        row, column = np.unravel_index(np.argmin(distance_squared), distance_squared.shape)
+        distance_km = 111.195 * np.sqrt(distance_squared[row, column])
+
+    metadata = granule_metadata or {}
+    granule_id = metadata.get("native-id") or metadata.get("title") or Path(granule_path).name
+    date_match = re.search(r"(\d{8})T\d{6}", granule_id)
+    granule_date = (
+        datetime.datetime.strptime(date_match.group(1), "%Y%m%d").date().isoformat()
+        if date_match
+        else (metadata.get("time_start") or "")[:10] or None
+    )
+    return {
+        "source": "NASA_EARTHDATA_LIVE",
+        "product": "SPL4SMGP",
+        "version": metadata.get("version"),
+        "resolution": "9 km",
+        "granuleId": granule_id,
+        "smapGranuleDate": granule_date,
+        "smSurface": round(float(surface[row, column]), 4),
+        "smRootzone": round(float(rootzone[row, column]), 4),
+        "cellLatitude": round(float(cell_lat[row, column]), 5),
+        "cellLongitude": round(float(cell_lon[row, column]), 5),
+        "nearestCellDistanceKm": round(float(distance_km), 2),
+        "sourceVariables": [
+            "/Geophysical_Data/sm_surface",
+            "/Geophysical_Data/sm_rootzone",
+        ],
+        "fetchedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "isDemoFallback": False,
+        "disclaimer": "SMAP L4 9 km data are regional hydrological context, not field truth.",
+    }
+
 
 def fetch_smap_soil_moisture(
     latitude: float,
     longitude: float,
     username: Optional[str] = None,
-    password: Optional[str] = None
+    password: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Extracts SMAP L4 (SPL4SMGP 9 km) surface and rootzone soil moisture.
-    Uses earthaccess if credentials are provided, or uses committed sample granule
-    values for Bangladesh delta pilot points.
-    """
-    user = username or os.environ.get("EARTHDATA_USERNAME")
-    pw = password or os.environ.get("EARTHDATA_PASSWORD")
-    
-    # If credentials are provided and earthaccess is installed, attempt live download
-    if user and pw:
-        try:
-            import earthaccess
-            auth = earthaccess.login(strategy="environment")
-            if auth.authenticated:
-                results = earthaccess.search_data(
-                    short_name="SPL4SMGP",
-                    point=(longitude, latitude),
-                    temporal=(
-                        (datetime.date.today() - datetime.timedelta(days=7)).strftime("%Y-%m-%d"),
-                        datetime.date.today().strftime("%Y-%m-%d")
-                    ),
-                    count=1
-                )
-                if results:
-                    # Successfully found live SMAP granule
-                    granule = results[0]
-                    return {
-                        "source": "NASA_EARTHDATA_LIVE",
-                        "product": "SPL4SMGP",
-                        "resolution": "9 km",
-                        "granuleId": granule.get("meta", {}).get("concept-id", "live-granule"),
-                        "smapGranuleDate": datetime.date.today().strftime("%Y-%m-%d"),
-                        "smSurface": 0.345,
-                        "smRootzone": 0.380,
-                        "isDemoFallback": False,
-                        "fetchedAt": datetime.datetime.utcnow().isoformat() + "Z",
-                        "disclaimer": "9 km regional hydrological context, not field truth"
-                    }
-        except Exception as e:
-            # Fall through to pre-fetched pilot granule
-            pass
-            
-    # Pre-fetched and committed Bangladesh pilot granule fallback
-    now = datetime.datetime.now(datetime.timezone.utc)
-    recent_date = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    # Adjust slightly by latitude/longitude delta to reflect realistic spatial moisture gradient
-    # Coastal delta (Barisal/Khulna ~ 22.5 N) is higher moisture than North Bengal (Rangpur/Bogura ~ 25 N)
-    base_surface = 0.338
-    base_rootzone = 0.372
-    if latitude > 24.0:
-        base_surface = 0.285
-        base_rootzone = 0.310
-        
-    return {
-        "source": "NASA_SMAP_L4_SPL4SMGP_PREFETCHED",
-        "product": "SPL4SMGP",
-        "resolution": "9 km",
-        "granuleId": f"SMAP_L4_SM_gph_{recent_date.replace('-', '')}T030000_Vv7032_001.h5",
-        "smapGranuleDate": recent_date,
-        "smSurface": round(base_surface, 3),
-        "smRootzone": round(base_rootzone, 3),
-        "soilTemperatureL1": 27.8,
-        "isDemoFallback": True,
-        "fetchedAt": now.isoformat(),
-        "disclaimer": "9 km regional hydrological context, not field truth"
-    }
+    user = username if username is not None else os.environ.get("EARTHDATA_USERNAME")
+    password_value = password if password is not None else os.environ.get("EARTHDATA_PASSWORD")
+    if not user or not password_value:
+        return unavailable_smap(
+            "NASA Earthdata credentials are not configured; SMAP values were not fabricated."
+        )
+
+    try:
+        import earthaccess
+
+        auth = earthaccess.login(strategy="environment")
+        if not auth.authenticated:
+            return unavailable_smap("NASA Earthdata authentication was not accepted.")
+
+        today = datetime.date.today()
+        granules = earthaccess.search_data(
+            short_name="SPL4SMGP",
+            point=(longitude, latitude),
+            temporal=(
+                (today - datetime.timedelta(days=14)).isoformat(),
+                today.isoformat(),
+            ),
+            count=1,
+            sort_key="-start_date",
+        )
+        if not granules:
+            return unavailable_smap("No recent SPL4SMGP granules were found for this location.")
+
+        metadata = granules[0].get("meta", {})
+        with tempfile.TemporaryDirectory(prefix="terrashift-smap-") as download_dir:
+            downloaded = earthaccess.download(
+                granules[:1],
+                local_path=download_dir,
+                show_progress=False,
+            )
+            if not downloaded:
+                return unavailable_smap("Earthdata found a granule but did not return a downloaded file.")
+            return extract_nearest_smap_cell(
+                str(downloaded[0]),
+                latitude,
+                longitude,
+                metadata,
+            )
+    except Exception as error:
+        return unavailable_smap(
+            f"Live SMAP retrieval failed ({type(error).__name__}); no demo values were substituted."
+        )

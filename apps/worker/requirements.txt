@@ -1,3 +1,6 @@
 requests>=2.31.0
 numpy>=1.26.0
+h5py>=3.11.0
+earthaccess>=0.12.0
+python-dotenv>=1.0.0
 pytest>=8.0.0

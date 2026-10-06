@@ -106,6 +106,30 @@ describe("TerraShift Agronomic Rotation Engine", () => {
     expect(conf.level).toBe("MEDIUM");
   });
 
+  it("does not describe partial farmer soil inputs as an ISRIC estimate", () => {
+    const partialContext: NasaContext = {
+      ...mockContext,
+      soilTexture: "clay_loam",
+      soilPh: null,
+      soilSource: "PARTIAL",
+    };
+    const conf = determineConfidence(partialContext);
+    expect(conf.level).toBe("MEDIUM");
+    expect(conf.reasonEn).toContain("missing soil values remain unknown");
+  });
+
+  it("uses a neutral soil baseline when no soil measurements or estimate are available", () => {
+    const defaultContext: NasaContext = {
+      ...mockContext,
+      soilTexture: null,
+      soilPh: null,
+      soilSource: "DEFAULT",
+    };
+    const conf = determineConfidence(defaultContext);
+    expect(conf.level).toBe("MEDIUM");
+    expect(conf.reasonEn).toContain("neutral soil scoring");
+  });
+
   it("assigns LOW confidence when NASA data is missing or stale", () => {
     const missingContext: NasaContext = {
       ...mockContext,

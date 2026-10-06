@@ -1,456 +1,181 @@
-"use client";
-
-import React, { useState, useEffect } from "react";
-import { Language, translations } from "../lib/translations";
-import { Header } from "../components/Header";
-import { MapPicker } from "../components/MapPicker";
-import { PlanView } from "../components/PlanView";
-import { NasaContextModal } from "../components/NasaContextModal";
-import { AuthModal } from "../components/AuthModal";
-import { api, getStoredUser, setStoredToken, setStoredUser } from "../lib/api";
-import { offlineDb } from "../lib/offlineDb";
+import Link from "next/link";
 import {
-  MapPin,
-  Sparkles,
-  WifiOff,
+  ArrowRight,
+  CloudSun,
   Droplets,
-  Layers,
-  ChevronRight,
+  Leaf,
+  MapPinned,
+  Satellite,
   ShieldCheck,
-  CheckCircle,
-  AlertTriangle,
-  RotateCw
+  Sprout,
 } from "lucide-react";
 
-export default function Home() {
-  const [language, setLanguage] = useState<Language>("bn");
-  const [highContrast, setHighContrast] = useState<boolean>(false);
-  const [fontScale, setFontScale] = useState<number>(1.0);
-  const [isSimulatedOffline, setIsSimulatedOffline] = useState<boolean>(false);
+const highlights = [
+  {
+    icon: Satellite,
+    title: "Satellite context, made useful",
+    description:
+      "NASA climate and soil-moisture observations become practical context for your next season.",
+  },
+  {
+    icon: Sprout,
+    title: "A rotation built for your land",
+    description:
+      "Explore a four-year crop sequence designed around Bangladesh’s three growing seasons.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Clear about what we know",
+    description:
+      "See sources, confidence, and honest ranges. Regional satellite data is never presented as field truth.",
+  },
+];
 
-  // Auth & User
-  const [user, setUser] = useState<any>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // Farm & Coordinates (Default to Rafiq's Barisal Delta Farm)
-  const [latitude, setLatitude] = useState(22.701);
-  const [longitude, setLongitude] = useState(90.3535);
-  const [farmName, setFarmName] = useState("রফিক-এর খামার (বরিশাল)");
-  const [fieldSize, setFieldSize] = useState(1.5);
-  const [soilTexture, setSoilTexture] = useState("clay_loam");
-  const [soilPh, setSoilPh] = useState<number | undefined>(6.8);
-
-  // Plan & NASA State
-  const [currentGoal, setCurrentGoal] = useState("BALANCED");
-  const [plan, setPlan] = useState<any>(null);
-  const [alternativePlan, setAlternativePlan] = useState<any>(null);
-  const [nasaContext, setNasaContext] = useState<any>(null);
-  const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
-  const [isSavedOffline, setIsSavedOffline] = useState(false);
-
-  // Status & Progress
-  const [loading, setLoading] = useState(false);
-  const [ingestStep, setIngestStep] = useState<string>("");
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const t = translations[language];
-
-  // Initialize from storage or seed demo
-  useEffect(() => {
-    const stored = getStoredUser();
-    if (stored) {
-      setUser(stored);
-    } else {
-      // Default to Rafiq persona
-      setUser({
-        id: "rafiq-pilot-farmer-id",
-        fullName: "Md. Rafiqul Islam (কৃষক রফিক)",
-        phone: "01700000000",
-        role: "farmer",
-      });
-    }
-
-    // Auto-generate pilot plan for Barisal delta so page is live instantly!
-    generatePlanForCoords(22.701, 90.3535, "BALANCED", false);
-  }, []);
-
-  // Sync high-contrast class on html
-  useEffect(() => {
-    if (highContrast) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [highContrast]);
-
-  const handleLocationChange = (lat: number, lon: number) => {
-    setLatitude(lat);
-    setLongitude(lon);
-    if (Math.abs(lat - 22.701) < 0.01) {
-      setFarmName("রফিক-এর ডেল্টা খামার (বরিশাল)");
-    } else if (Math.abs(lat - 23.1664) < 0.01) {
-      setFarmName("যশোর দক্ষিণ-পশ্চিম জমি");
-    } else if (Math.abs(lat - 24.8465) < 0.01) {
-      setFarmName("বগুড়া উত্তরবঙ্গ খামার");
-    } else if (Math.abs(lat - 24.7471) < 0.01) {
-      setFarmName("ময়মনসিংহ পুরাতন ব্রহ্মপুত্র জমি");
-    } else {
-      setFarmName(`খামার (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E)`);
-    }
-  };
-
-  const generatePlanForCoords = async (
-    lat: number,
-    lon: number,
-    goal: string = currentGoal,
-    isManualClick: boolean = true
-  ) => {
-    setLoading(true);
-    setStatusMessage(null);
-
-    // If simulated offline: retrieve saved plan directly from IndexedDB
-    if (isSimulatedOffline) {
-      setIngestStep("অফলাইন মেমরি থেকে পরিকল্পনা লোড করা হচ্ছে...");
-      const saved = await offlineDb.getPlan("barisal-pilot-farm-1");
-      if (saved) {
-        setPlan(saved.plan);
-        setAlternativePlan(saved.alternativePlan);
-        const cachedNasa = await offlineDb.getNasaContext("barisal-pilot-farm-1");
-        setNasaContext(cachedNasa);
-        setIsSavedOffline(true);
-        setStatusMessage(t.offlineBanner);
-      } else {
-        setStatusMessage(t.connectToGetNewPlan);
-      }
-      setLoading(false);
-      return;
-    }
-
-    // Progress pipeline messages (PRD Section 12: "first plan shows progress while ingest runs")
-    setIngestStep("🛰️ নাসা পাওয়ার (POWER) ৯০ দিনের আবহাওয়া বিশ্লেষণ হচ্ছে...");
-    await new Promise((r) => setTimeout(r, 400));
-    setIngestStep("💧 নাসা এসএমএপি (SMAP L4) ৯ কিমি মাটির আর্দ্রতা রিড করা হচ্ছে...");
-    await new Promise((r) => setTimeout(r, 400));
-    setIngestStep("🧪 FAO-56 পেনম্যান-মন্টিথ দৈনিক বাষ্পীভবন (ET₀) হিসাব হচ্ছে...");
-    await new Promise((r) => setTimeout(r, 400));
-    setIngestStep("🌾 ৪ বছরের টেকসই শস্য আবর্তন চক্র চূড়ান্ত হচ্ছে...");
-
-    try {
-      // 1. Try real API backend if available
-      const farmId = "barisal-pilot-farm-1";
-      const recRes = await api.getRecommendation(farmId, goal, false, isSimulatedOffline);
-
-      if (recRes.ok && recRes.data?.plan) {
-        setPlan(recRes.data.plan);
-        setAlternativePlan(recRes.data.alternativePlan);
-        const details = await api.getFarmDetails(farmId, isSimulatedOffline);
-        if (details.ok && details.data?.nasaContext) {
-          setNasaContext(details.data.nasaContext);
-        }
-        setIsSavedOffline(true);
-      } else {
-        // Fallback: Generate plan client-side with authentic engine logic
-        const { fallbackPlan, fallbackAltPlan, fallbackNasa } = getClientFallbackEngine(lat, lon, goal);
-        setPlan(fallbackPlan);
-        setAlternativePlan(fallbackAltPlan);
-        setNasaContext(fallbackNasa);
-        // Persist to IndexedDB
-        await offlineDb.savePlan(farmId, goal, fallbackPlan, fallbackAltPlan, { powerFresh: true, smapFresh: true });
-        await offlineDb.saveNasaContext(farmId, fallbackNasa);
-        setIsSavedOffline(true);
-      }
-    } catch (e) {
-      // Fallback
-      const { fallbackPlan, fallbackAltPlan, fallbackNasa } = getClientFallbackEngine(lat, lon, goal);
-      setPlan(fallbackPlan);
-      setAlternativePlan(fallbackAltPlan);
-      setNasaContext(fallbackNasa);
-      setIsSavedOffline(true);
-    } finally {
-      setLoading(false);
-      setIngestStep("");
-    }
-  };
-
-  const handleGoalChange = (newGoal: string) => {
-    setCurrentGoal(newGoal);
-    generatePlanForCoords(latitude, longitude, newGoal, true);
-  };
-
-  const handleSaveOfflineManual = async () => {
-    const farmId = "barisal-pilot-farm-1";
-    if (plan) {
-      await offlineDb.savePlan(farmId, currentGoal, plan, alternativePlan, { powerFresh: true, smapFresh: true });
-      if (nasaContext) {
-        await offlineDb.saveNasaContext(farmId, nasaContext);
-      }
-      setIsSavedOffline(true);
-      alert(t.savedOfflineSuccess);
-    }
-  };
-
-  const handleLogout = () => {
-    setStoredToken(null);
-    setStoredUser(null);
-    setUser(null);
-  };
-
+export default function LandingPage() {
   return (
-    <div
-      style={{ fontSize: `${fontScale * 100}%` }}
-      className="min-h-screen flex flex-col bg-slate-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors"
-    >
-      {/* Top Header */}
-      <Header
-        language={language}
-        onLanguageChange={setLanguage}
-        highContrast={highContrast}
-        onHighContrastToggle={() => setHighContrast(!highContrast)}
-        fontScale={fontScale}
-        onFontScaleChange={setFontScale}
-        isSimulatedOffline={isSimulatedOffline}
-        onSimulatedOfflineToggle={() => {
-          const next = !isSimulatedOffline;
-          setIsSimulatedOffline(next);
-          if (next) {
-            generatePlanForCoords(latitude, longitude, currentGoal, false);
-          }
-        }}
-        user={user}
-        onLogout={handleLogout}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-      />
-
-      {/* Offline Mode Alert Banner (PRD Section 10) */}
-      {isSimulatedOffline && (
-        <div className="bg-amber-500 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner">
-          <WifiOff className="w-4 h-4 animate-bounce" />
-          <span>{t.offlineBanner}</span>
-        </div>
-      )}
-
-      {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 space-y-8">
-        {/* Hero & Farmer Status */}
-        <section className="bg-white dark:bg-gray-900 border-2 border-agrogreen-200 dark:border-yellow-400 rounded-3xl p-6 shadow-sm flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-[11px] font-extrabold tracking-widest uppercase text-agrogreen-700 dark:text-yellow-400">
-              NASA Space Apps 2026 • Team AgroNova
+    <main className="landing-page min-h-screen overflow-hidden bg-[#f5f4ec] text-[#183a2b]">
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
+        <Link href="/" className="flex items-center gap-3" aria-label="TerraShift home">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1c5039] text-[#d8ee9b] shadow-lg shadow-[#183a2b]/15">
+            <Sprout size={24} />
+          </span>
+          <span>
+            <span className="block text-xl font-extrabold tracking-tight">TerraShift</span>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.22em] text-[#66816e]">
+              Farming with foresight
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
-              {language === "bn" ? "মাঠে নাসা ডেটা: ৪-বছরের শস্য আবর্তন" : "Field Shift: Adapting Farms with NASA Data"}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-              {user ? `${user.fullName} (${farmName})` : "রফিক-এর খামার • ১.৫ হেক্টর জমি"}
-            </p>
-          </div>
+          </span>
+        </Link>
+        <nav className="hidden items-center gap-8 text-sm font-semibold text-[#557160] md:flex">
+          <a href="#approach" className="transition hover:text-[#1c5039]">Our approach</a>
+          <a href="#science" className="transition hover:text-[#1c5039]">The science</a>
+        </nav>
+        <Link
+          href="/dashboard"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#1c5039] px-5 text-sm font-bold text-white shadow-lg shadow-[#1c5039]/15 transition hover:-translate-y-0.5 hover:bg-[#133c2b]"
+        >
+          Open dashboard <ArrowRight size={16} />
+        </Link>
+      </header>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsNasaModalOpen(true)}
-              className="min-h-touch px-4 py-2 rounded-xl bg-nasablue-600/10 hover:bg-nasablue-600/20 text-nasablue-700 dark:text-yellow-300 dark:bg-yellow-400/20 border border-nasablue-200 dark:border-yellow-400 font-bold text-xs flex items-center gap-1.5"
+      <section className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-8 sm:px-8 md:pt-10 lg:grid-cols-[1.02fr_.98fr] lg:px-12 lg:pb-28">
+        <div className="relative z-[1]">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#cad9bd] bg-white/70 px-3.5 py-2 text-xs font-bold text-[#38684b]">
+            <span className="h-2 w-2 rounded-full bg-[#75a950]" />
+            Climate-smart planning for delta farms
+          </div>
+          <h1 className="max-w-2xl text-[clamp(3.2rem,7vw,6.25rem)] font-semibold leading-[.98] tracking-[-.065em] text-[#183a2b]">
+            Grow with the
+            <span className="block font-serif font-medium italic text-[#6d8d52]">seasons, not</span>
+            against them.
+          </h1>
+          <p className="mt-7 max-w-xl text-base leading-7 text-[#607667] sm:text-lg sm:leading-8">
+            A clearer way for Bangladesh’s smallholder farmers to plan what comes
+            next—grounded in NASA Earth observations, local crop knowledge, and
+            the realities of your own field.
+          </p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/dashboard"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-[#1c5039] px-7 text-sm font-bold text-white shadow-xl shadow-[#1c5039]/20 transition hover:-translate-y-0.5 hover:bg-[#133c2b]"
             >
-              <Layers className="w-4 h-4" />
-              <span>{t.viewNasaData}</span>
-            </button>
+              Explore your farm <ArrowRight size={17} />
+            </Link>
+            <a
+              href="#approach"
+              className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#cdd8c8] bg-white/55 px-7 text-sm font-bold text-[#335841] transition hover:bg-white"
+            >
+              See how it works
+            </a>
           </div>
-        </section>
-
-        {/* Section 1: Map & Location Picker (Drop a Pin) */}
-        <section className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-agrogreen-600 text-white dark:bg-yellow-400 dark:text-black flex items-center justify-center font-bold text-sm">
-                ১
-              </div>
-              <h2 className="text-lg font-black text-gray-900 dark:text-yellow-400">
-                {t.dropPin}
-              </h2>
-            </div>
-            <span className="text-xs font-semibold text-gray-500">
-              OpenStreetMap (No API key)
-            </span>
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-semibold text-[#6e8373]">
+            <span className="inline-flex items-center gap-2"><MapPinned size={15} /> Built for delta farms</span>
+            <span className="inline-flex items-center gap-2"><Droplets size={15} /> Water-aware planning</span>
+            <span className="inline-flex items-center gap-2"><Leaf size={15} /> Designed to work offline</span>
           </div>
-
-          <MapPicker
-            language={language}
-            latitude={latitude}
-            longitude={longitude}
-            onLocationChange={handleLocationChange}
-          />
-
-          {/* Farm Details Form (PRD Section 2: Rafiq minimum input = location + field size) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {t.farmName}
-              </label>
-              <input
-                type="text"
-                value={farmName}
-                onChange={(e) => setFarmName(e.target.value)}
-                className="w-full min-h-touch px-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {t.fieldSize}
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.2"
-                  value={fieldSize}
-                  onChange={(e) => setFieldSize(parseFloat(e.target.value) || 1.5)}
-                  className="w-full min-h-touch px-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold"
-                />
-                <span className="text-xs font-semibold text-gray-500 flex-shrink-0">
-                  {t.hectares}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => generatePlanForCoords(latitude, longitude, currentGoal, true)}
-                className="w-full min-h-touch py-3 rounded-xl bg-agrogreen-600 hover:bg-agrogreen-700 text-white dark:bg-yellow-400 dark:text-black font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <RotateCw className="w-4 h-4 animate-spin" />
-                    <span>{t.analyzing}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-yellow-300 dark:text-black" />
-                    <span>{t.analyzeNasa}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Ingestion Progress Live Steps (PRD Section 12) */}
-          {loading && (
-            <div className="p-4 rounded-2xl bg-nasablue-50 dark:bg-gray-800 border border-nasablue-200 dark:border-yellow-400 animate-pulse text-xs font-bold text-nasablue-950 dark:text-yellow-300 flex items-center gap-3">
-              <RotateCw className="w-5 h-5 animate-spin flex-shrink-0" />
-              <span>{ingestStep}</span>
-            </div>
-          )}
-        </section>
-
-        {/* Section 2: 4-Year Rotation Plan Screen */}
-        <section className="space-y-4">
-          <PlanView
-            language={language}
-            plan={plan}
-            alternativePlan={alternativePlan}
-            currentGoal={currentGoal}
-            onGoalChange={handleGoalChange}
-            isSavedOffline={isSavedOffline}
-            onSaveOffline={handleSaveOfflineManual}
-            onOpenNasaContext={() => setIsNasaModalOpen(true)}
-          />
-        </section>
-      </main>
-
-      {/* NASA Context Telemetry Modal */}
-      <NasaContextModal
-        language={language}
-        isOpen={isNasaModalOpen}
-        onClose={() => setIsNasaModalOpen(false)}
-        nasaContext={nasaContext}
-        farm={{ name: farmName, latitude, longitude, areaHectares: fieldSize, soilTexture, soilPh }}
-      />
-
-      {/* Auth Modal */}
-      <AuthModal
-        language={language}
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={(u) => setUser(u)}
-      />
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black py-6 mt-12 text-center text-xs text-gray-500 dark:text-gray-400">
-        <div className="max-w-5xl mx-auto px-4 space-y-2">
-          <p className="font-bold text-gray-700 dark:text-gray-300">
-            TerraShift • NASA Space Apps Challenge 2026 • Team AgroNova
-          </p>
-          <p className="text-[11px] leading-relaxed max-w-2xl mx-auto">
-            NASA SMAP L4 (SPL4SMGP 9 km) provides regional hydrological context, not field truth. All rotation advice is agronomist-reviewed decision support based on BARI & BRRI cropping manuals.
-          </p>
         </div>
+
+        <div className="relative mx-auto w-full max-w-[590px]">
+          <div className="field-art absolute -inset-8 rounded-[3rem] opacity-70 blur-2xl" aria-hidden="true" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-[#183d2d] p-3 shadow-[0_35px_100px_-35px_rgba(24,58,43,.55)] sm:p-4">
+            <div className="field-landscape relative min-h-[430px] overflow-hidden rounded-[1.45rem] p-5 sm:min-h-[490px] sm:p-7">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#183b2e]/60 via-transparent to-[#142f25]/75" />
+              <div className="relative flex items-center justify-between text-white">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 backdrop-blur"><Sprout size={17} /></span>
+                  <span className="text-xs font-extrabold tracking-wide">TERRASHIFT</span>
+                </div>
+                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-semibold backdrop-blur">FIELD OVERVIEW</span>
+              </div>
+
+              <div className="absolute left-5 right-5 top-[88px] rounded-2xl border border-white/25 bg-[#153b2d]/70 p-4 text-white shadow-lg backdrop-blur-xl sm:left-7 sm:right-7 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#d3e9a0]">Your land, your next season</p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">A plan that starts with your field.</h2>
+                  </div>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#d1eaa0] text-[#1b5038]"><Leaf size={19} /></span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-white/75">Crop rotation and climate context, brought together in one simple view.</p>
+              </div>
+
+              <div className="absolute bottom-5 left-5 right-5 grid grid-cols-2 gap-3 sm:bottom-7 sm:left-7 sm:right-7">
+                <div className="rounded-2xl border border-white/20 bg-[#123727]/75 p-4 text-white shadow-lg backdrop-blur-xl">
+                  <div className="flex items-center gap-2 text-[#d3e9a0]"><CloudSun size={16} /><span className="text-[10px] font-bold uppercase tracking-wider">Climate context</span></div>
+                  <p className="mt-3 text-sm font-bold">NASA POWER</p>
+                  <p className="mt-1 text-[10px] leading-4 text-white/65">Conditions and trends, with source and freshness clearly shown.</p>
+                </div>
+                <div className="rounded-2xl border border-white/20 bg-[#123727]/75 p-4 text-white shadow-lg backdrop-blur-xl">
+                  <div className="flex items-center gap-2 text-[#d3e9a0]"><Sprout size={16} /><span className="text-[10px] font-bold uppercase tracking-wider">Seasonal plan</span></div>
+                  <p className="mt-3 text-sm font-bold">4 years · 12 seasons</p>
+                  <p className="mt-1 text-[10px] leading-4 text-white/65">A transparent crop rotation shaped by your planning priorities.</p>
+                </div>
+              </div>
+              <div className="absolute bottom-[178px] right-7 hidden rounded-full border border-[#e9f3cf]/70 bg-[#d5e99a] p-3 text-[#234631] shadow-lg sm:block"><MapPinned size={18} /></div>
+              <div className="absolute bottom-[204px] left-[18%] hidden rounded-full border border-white/60 bg-white/85 p-2.5 text-[#346948] shadow-md sm:block"><Sprout size={17} /></div>
+              <div className="absolute right-[22%] top-[265px] hidden h-3 w-3 rounded-full bg-[#f2db80] shadow-[0_0_0_7px_rgba(242,219,128,.2)] sm:block" />
+            </div>
+          </div>
+          <div className="absolute -bottom-5 -left-3 rounded-2xl border border-[#e1e8d8] bg-white/95 px-4 py-3 shadow-xl backdrop-blur sm:-left-8">
+            <p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#748775]">Grounded in evidence</p>
+            <p className="mt-1 text-xs font-bold text-[#244b34]">No black-box recommendations</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="approach" className="border-y border-[#dfe5d8] bg-white/55">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-12 lg:py-20">
+          <div className="max-w-2xl">
+            <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#77905e]">From observation to action</p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Useful guidance, with the reasoning included.</h2>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {highlights.map(({ icon: Icon, title, description }, index) => (
+              <article key={title} className="rounded-3xl border border-[#e3e8df] bg-[#fbfcf8] p-6 sm:p-7">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#e7efdc] text-[#426d48]"><Icon size={21} /></div>
+                <p className="mt-6 text-[10px] font-extrabold uppercase tracking-[.18em] text-[#8b9b82]">0{index + 1}</p>
+                <h3 className="mt-2 text-lg font-bold tracking-tight">{title}</h3>
+                <p className="mt-3 text-sm leading-6 text-[#6d7f70]">{description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="science" className="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-16 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12 lg:py-20">
+        <div className="max-w-2xl">
+          <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#77905e]">Built for the realities of farming</p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">The right next step starts with what you know.</h2>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-[#687c6d]">Add a field location and farm details, choose what matters most, then explore the crop plan and available Earth observation context. Keep your latest plan close, even when the connection drops.</p>
+        </div>
+        <Link href="/dashboard" className="inline-flex min-h-14 shrink-0 items-center justify-center gap-3 rounded-full bg-[#1c5039] px-7 text-sm font-bold text-white shadow-lg shadow-[#1c5039]/15 transition hover:-translate-y-0.5 hover:bg-[#133c2b]">
+          Go to your dashboard <ArrowRight size={17} />
+        </Link>
+      </section>
+
+      <footer className="border-t border-[#dfe5d8] px-5 py-6 text-center text-xs text-[#718171]">
+        TerraShift · Climate-adaptive crop planning for Bangladesh’s delta farms
       </footer>
-    </div>
+    </main>
   );
-}
-
-// Client-side fallback generator to ensure zero crash even if backend container is warming up
-function getClientFallbackEngine(lat: number, lon: number, goal: string) {
-  const isWaterGoal = goal === "CONSERVE_WATER";
-  const isNitrogenGoal = goal === "RESTORE_NITROGEN";
-
-  const fallbackNasa = {
-    source: "NASA_POWER_LIVE",
-    powerMeanTemp: 28.3,
-    powerTotalPrecip: 1839.2,
-    powerSolarRad: 17.5,
-    powerHeatDays: 3,
-    et0Mean: 2.7,
-    etSource: "FAO56-PM-from-POWER",
-    smapSurface: 0.338,
-    smapRootzone: 0.372,
-    smapGranuleDate: "2026-09-29",
-    soilTexture: "clay_loam",
-    soilPh: 6.8,
-    soilSource: "ESTIMATED",
-  };
-
-  const seasonsList = [
-    // Year 1
-    { year: 1, season: "Rabi", cropId: isWaterGoal ? "mustard" : "lentil", cropNameEn: isWaterGoal ? "Mustard" : "Lentil", cropNameBn: isWaterGoal ? "সরিষা" : "মসুর ডাল", variety: isWaterGoal ? "BARI Sarisha-14" : "BARI Masur-8", family: isWaterGoal ? "Brassicaceae" : "Fabaceae", waterDemand: 2, nFixRange: { text: isWaterGoal ? "0 kg N/ha" : "35-65 kg N/ha" }, reasonBn: isWaterGoal ? "স্বল্পমেয়াদী তেলবীজ, ফসলের রোগবালাইয়ের চক্র ভেঙে পানি সাশ্রয় করে।" : "মাটিতে ৩৫-৬৫ কেজি/হেক্টর প্রাকৃতিক নাইট্রোজেন যোগ করে মাটির উর্বরতা বাড়ায়।", reasonEn: "Water-saving winter break crop." },
-    { year: 1, season: "Kharif-1", cropId: "mung_bean", cropNameEn: "Mung Bean", cropNameBn: "মুগ ডাল", variety: "BARI Mung-6", family: "Fabaceae", waterDemand: 2, nFixRange: { text: "30-60 kg N/ha" }, reasonBn: "৬০ দিনের গ্রীষ্মকালীন ডাল, আমন ধানের আগে মাটিতে প্রচুর নাইট্রোজেন ফিরিয়ে আনে।", reasonEn: "Fast summer pulse restoring nitrogen before monsoon." },
-    { year: 1, season: "Kharif-2", cropId: "rice_aman", cropNameEn: "T. Aman Rice", cropNameBn: "রোপা আমন ধান", variety: "BRRI dhan49", family: "Poaceae", waterDemand: 4, nFixRange: { text: "0 kg N/ha" }, reasonBn: "বর্ষার বৃষ্টি কাজে লাগিয়ে প্রধান খাদ্যশস্য হিসেবে খাদ্যের নিশ্চয়তা দেয়।", reasonEn: "Monsoon rainfed staple crop." },
-
-    // Year 2
-    { year: 2, season: "Rabi", cropId: isWaterGoal ? "wheat" : "chickpea", cropNameEn: isWaterGoal ? "Wheat" : "Chickpea", cropNameBn: isWaterGoal ? "গম" : "ছোলা", variety: isWaterGoal ? "BARI Gom-33" : "BARI Chola-9", family: isWaterGoal ? "Poaceae" : "Fabaceae", waterDemand: isWaterGoal ? 2 : 1, nFixRange: { text: isWaterGoal ? "0 kg N/ha" : "40-75 kg N/ha" }, reasonBn: isWaterGoal ? "বোরো ধানের চেয়ে ৬০% কম পানিতে ফলন দেয়।" : "অত্যন্ত খরা সহনশীল ডাল, গভীর মূল দিয়ে মাটির আর্দ্রতা ব্যবহার করে।", reasonEn: "High-efficiency dryland rotation crop." },
-    { year: 2, season: "Kharif-1", cropId: "jute", cropNameEn: "Jute", cropNameBn: "পাট", variety: "BJRI Deshi Pat-8", family: "Malvaceae", waterDemand: 3, nFixRange: { text: "0 kg N/ha" }, reasonBn: "গাছের পাতা ঝরে মাটিতে ৩-৪ টন/হেক্টর জৈব পদার্থ ফিরিয়ে দেয়।", reasonEn: "Major fiber cash crop restoring organic soil matter." },
-    { year: 2, season: "Kharif-2", cropId: "rice_aman", cropNameEn: "T. Aman Rice", cropNameBn: "রোপা আমন ধান", variety: "BRRI dhan87", family: "Poaceae", waterDemand: 4, nFixRange: { text: "0 kg N/ha" }, reasonBn: "পাটের রেখে যাওয়া জৈব পদার্থের সহায়তায় আমন ধানের রাসায়নিক সারের খরচ কমে।", reasonEn: "Rainfed staple utilizing post-jute fertility." },
-
-    // Year 3
-    { year: 3, season: "Rabi", cropId: isWaterGoal ? "potato" : "mustard", cropNameEn: isWaterGoal ? "Potato" : "Mustard", cropNameBn: isWaterGoal ? "আলু" : "সরিষা", variety: isWaterGoal ? "BARI Alu-7" : "BARI Sarisha-17", family: isWaterGoal ? "Solanaceae" : "Brassicaceae", waterDemand: isWaterGoal ? 3 : 2, nFixRange: { text: "0 kg N/ha" }, reasonBn: "উচ্চ মূল্যের লাভজনক শীতকালীন ফসল যা শস্য আবর্তনে বৈচিত্র্য আনে।", reasonEn: "High value crop diversifying field rotation." },
-    { year: 3, season: "Kharif-1", cropId: "mung_bean", cropNameEn: "Mung Bean", cropNameBn: "মুগ ডাল", variety: "Binamung-8", family: "Fabaceae", waterDemand: 2, nFixRange: { text: "30-60 kg N/ha" }, reasonBn: "গ্রীষ্মকালীন ডাল যা মাটির ব্যাকটেরিয়া সক্রিয় রাখে।", reasonEn: "Biological nitrogen replenishing summer pulse." },
-    { year: 3, season: "Kharif-2", cropId: "rice_aman", cropNameEn: "T. Aman Rice", cropNameBn: "রোপা আমন ধান", variety: "Bina dhan-7", family: "Poaceae", waterDemand: 4, nFixRange: { text: "0 kg N/ha" }, reasonBn: "বর্ষার মূল ফসল হিসেবে নির্ভরযোগ্য ফলন দেয়।", reasonEn: "Staple monsoon harvest." },
-
-    // Year 4
-    { year: 4, season: "Rabi", cropId: "lentil", cropNameEn: "Lentil", cropNameBn: "মসুর ডাল", variety: "BARI Masur-9", family: "Fabaceae", waterDemand: 2, nFixRange: { text: "35-65 kg N/ha" }, reasonBn: "৪ বছরের চক্রের শেষে মাটির নাইট্রোজেন পুরোপুরি পুনরুদ্ধার করে।", reasonEn: "Legume restoring soil fertility at cycle completion." },
-    { year: 4, season: "Kharif-1", cropId: isWaterGoal ? "maize" : "aus_rice", cropNameEn: isWaterGoal ? "Maize" : "Aus Rice", cropNameBn: isWaterGoal ? "ভুট্টা" : "আউশ ধান", variety: isWaterGoal ? "BARI Hybrid Maize-9" : "BRRI dhan48", family: "Poaceae", waterDemand: 3, nFixRange: { text: "0 kg N/ha" }, reasonBn: "মাঝারি সেচে দ্রুত বর্ধনশীল খাদ্যশস্য।", reasonEn: "Pre-monsoon grain utilizing early showers." },
-    { year: 4, season: "Kharif-2", cropId: "rice_aman", cropNameEn: "T. Aman Rice", cropNameBn: "রোপা আমন ধান", variety: "BRRI dhan49", family: "Poaceae", waterDemand: 4, nFixRange: { text: "0 kg N/ha" }, reasonBn: "ডেল্টার ঐতিহ্যবাহী ও টেকসই বর্ষাকালীন ধান।", reasonEn: "Traditional resilient monsoon delta rice." },
-  ];
-
-  const fallbackPlan = {
-    planId: "plan_pilot_rec",
-    targetGoal: goal,
-    confidence: "MEDIUM",
-    confidenceReasonEn: "Live NASA POWER & SMAP L4 soil moisture matched with estimated ISRIC SoilGrids baseline.",
-    confidenceReasonBn: "লাইভ নাসা আবহাওয়া ও এসএমএপি মাটির আর্দ্রতার সাথে আনুমানিক মাটির তথ্যের ভিত্তিতে তৈরি।",
-    overallScore: 88.5,
-    waterSavingsRange: isWaterGoal ? "25% - 40% lower irrigation demand vs rice monoculture" : "15% - 25% lower irrigation demand",
-    nitrogenGainRange: isNitrogenGoal ? "55 - 85 kg biological N/ha per year" : "40 - 70 kg biological N/ha per year",
-    engineVersion: "3.0.0",
-    seasons: seasonsList,
-  };
-
-  const fallbackAltPlan = {
-    ...fallbackPlan,
-    planId: "plan_pilot_alt",
-    overallScore: 84.0,
-    waterSavingsRange: "20% - 30% lower irrigation demand",
-    nitrogenGainRange: "45 - 75 kg biological N/ha per year",
-  };
-
-  return { fallbackPlan, fallbackAltPlan, fallbackNasa };
 }

@@ -47,6 +47,7 @@ export interface NasaCacheEntity {
   powerExpiresAt: Date | null;
   smapSurface: number | null;
   smapRootzone: number | null;
+  smapData: any;
   smapGranuleDate: string | null;
   smapFetchedAt: Date | null;
   smapExpiresAt: Date | null;
@@ -127,7 +128,8 @@ class InMemoryDB {
       id: "cache-barisal-1",
       farmId,
       powerData: {
-        source: "NASA_POWER_LIVE",
+        source: "NASA_POWER_DEMO_FALLBACK",
+        warning: "Seeded demo values; NASA POWER has not been queried yet.",
         meanTemp: 28.3,
         totalPrecip: 1839.2,
         meanSolarRad: 17.5,
@@ -140,13 +142,17 @@ class InMemoryDB {
       powerHeatDays: 3,
       powerFetchedAt: now,
       powerExpiresAt: powerExpires,
-      smapSurface: 0.338,
-      smapRootzone: 0.372,
-      smapGranuleDate: "2026-09-29",
+      smapSurface: null,
+      smapRootzone: null,
+      smapData: {
+        source: "NASA_SMAP_DEMO_FALLBACK",
+        warning: "Seeded demonstration values; no Earthdata granule has been sampled.",
+      },
+      smapGranuleDate: null,
       smapFetchedAt: now,
       smapExpiresAt: smapExpires,
-      et0Mean: 2.7,
-      etSource: "FAO56-PM-from-POWER",
+      et0Mean: null,
+      etSource: null,
       soilData: { texture: "clay_loam", pH: 6.8, source: "ESTIMATED" },
       isStale: false,
       createdAt: now,
@@ -373,6 +379,7 @@ export const db = {
       powerExpiresAt: data.powerExpiresAt ? new Date(data.powerExpiresAt) : existing?.powerExpiresAt ?? null,
       smapSurface: data.smapSurface ?? existing?.smapSurface ?? null,
       smapRootzone: data.smapRootzone ?? existing?.smapRootzone ?? null,
+      smapData: data.smapData ?? existing?.smapData ?? null,
       smapGranuleDate: data.smapGranuleDate ?? existing?.smapGranuleDate ?? null,
       smapFetchedAt: data.smapFetchedAt ? new Date(data.smapFetchedAt) : existing?.smapFetchedAt ?? now,
       smapExpiresAt: data.smapExpiresAt ? new Date(data.smapExpiresAt) : existing?.smapExpiresAt ?? null,
@@ -472,4 +479,3 @@ export const db = {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   },
 };
-

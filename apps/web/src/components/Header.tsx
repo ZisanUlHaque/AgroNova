@@ -2,13 +2,14 @@
 
 import React from "react";
 import { Language, translations } from "../lib/translations";
-import { Globe, Eye, Type, Wifi, WifiOff, LogOut, Sprout } from "lucide-react";
+import { Globe, Moon, Sun, Wifi, WifiOff, LogOut, Sprout } from "lucide-react";
+import Link from "next/link";
 
 interface HeaderProps {
   language: Language;
   onLanguageChange: (lang: Language) => void;
-  highContrast: boolean;
-  onHighContrastToggle: () => void;
+  isDarkMode: boolean;
+  onThemeToggle: () => void;
   fontScale: number;
   onFontScaleChange: (scale: number) => void;
   isSimulatedOffline: boolean;
@@ -21,8 +22,8 @@ interface HeaderProps {
 export function Header({
   language,
   onLanguageChange,
-  highContrast,
-  onHighContrastToggle,
+  isDarkMode,
+  onThemeToggle,
   fontScale,
   onFontScaleChange,
   isSimulatedOffline,
@@ -36,25 +37,24 @@ export function Header({
   return (
     <header className="border-b bg-white dark:bg-black dark:border-yellow-400 sticky top-0 z-40 shadow-sm transition-colors">
       <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        {/* Brand */}
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-agrogreen-600 dark:bg-yellow-400 flex items-center justify-center text-white dark:text-black shadow">
-            <Sprout className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-agrogreen-800 dark:text-yellow-400">
-                {t.appName}
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-nasablue-500/10 text-nasablue-600 dark:bg-yellow-400/20 dark:text-yellow-300">
-                NASA Data
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-300 hidden sm:block">
-              {t.tagline}
-            </p>
-          </div>
-        </div>
+<Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+  <div className="w-10 h-10 rounded-xl bg-agrogreen-600 dark:bg-yellow-400 flex items-center justify-center text-white dark:text-black shadow">
+    <Sprout className="w-6 h-6" />
+  </div>
+  <div>
+    <div className="flex items-center gap-2">
+      <span className="font-extrabold text-xl tracking-tight text-agrogreen-800 dark:text-yellow-400">
+        {t.appName}
+      </span>
+      <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-nasablue-500/10 text-nasablue-600 dark:bg-yellow-400/20 dark:text-yellow-300">
+        NASA Data
+      </span>
+    </div>
+    <p className="text-xs text-gray-500 dark:text-gray-300 hidden sm:block">
+      {t.tagline}
+    </p>
+  </div>
+</Link>
 
         {/* Accessibility & Mode Controls */}
         <div className="flex items-center flex-wrap gap-2">
@@ -81,18 +81,13 @@ export function Header({
             )}
           </button>
 
-          {/* High-Contrast Mode Toggle (AAA) */}
           <button
-            onClick={onHighContrastToggle}
-            className={`min-h-touch px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 border ${
-              highContrast
-                ? "bg-yellow-400 text-black border-yellow-500 font-bold"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700"
-            }`}
-            title="High-Contrast Mode"
+            onClick={onThemeToggle}
+            className="min-h-touch px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 border bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700"
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
-            <Eye className="w-4 h-4" />
-            <span className="hidden md:inline">AAA</span>
+            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
           {/* Font Scaling */}

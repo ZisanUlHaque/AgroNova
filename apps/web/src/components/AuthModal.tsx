@@ -37,15 +37,12 @@ export function AuthModal({
         onLoginSuccess(res.data.user);
         onClose();
       } else {
-        // Fallback demo user if API is offline
-        const mockRafiq = {
-          id: "rafiq-pilot-farmer-id",
-          fullName: "Md. Rafiqul Islam (কৃষক রফিক)",
-          phone: "01700000000",
-          role: "farmer",
-        };
-        onLoginSuccess(mockRafiq);
-        onClose();
+        setError(
+          res.data?.error ||
+            (language === "bn"
+              ? "API সার্ভারে লগইন হয়নি। সার্ভার চালু আছে কি না দেখুন।"
+              : "Could not log in to the API. Check that the server is running.")
+        );
       }
     } catch (err: any) {
       setError(err?.message || "Demo login failed");

@@ -35,20 +35,28 @@ export function NasaContextModal({
   const t = translations[language];
 
   const power = nasaContext?.powerData || {};
-  const meanTemp = nasaContext?.powerMeanTemp ?? 28.3;
-  const totalPrecip = nasaContext?.powerTotalPrecip ?? 1839.2;
-  const solarRad = nasaContext?.powerSolarRad ?? 17.5;
-  const heatDays = nasaContext?.powerHeatDays ?? 3;
-  const et0 = nasaContext?.et0Mean ?? 2.7;
-  const etSource = nasaContext?.etSource ?? "FAO56-PM-from-POWER";
-
-  const smapSurface = nasaContext?.smapSurface ?? 0.338;
-  const smapRootzone = nasaContext?.smapRootzone ?? 0.372;
-  const smapDate = nasaContext?.smapGranuleDate ?? "2026-09-29";
-
-  const soilTexture = farm?.soilTexture || nasaContext?.soilTexture || "clay_loam";
-  const soilPh = farm?.soilPh ?? nasaContext?.soilPh ?? 6.8;
-  const soilSource = farm?.soilSource || nasaContext?.soilSource || "ESTIMATED";
+  const smap = nasaContext?.smapData || {};
+  const soil = nasaContext?.soilData || {};
+  const display = (value: unknown, sourceIsLive = true) =>
+    sourceIsLive && typeof value === "number" && Number.isFinite(value) ? value : "—";
+  const powerIsLive = power.source === "NASA_POWER_LIVE";
+  const smapIsLive = smap.source === "NASA_EARTHDATA_LIVE";
+  const farmerSoilTextureProvided = farm?.soilTexture != null;
+  const farmerSoilPhProvided = farm?.soilPh != null;
+  const farmerSoilProvided = farmerSoilTextureProvided || farmerSoilPhProvided;
+  const soilIsSoilGrids = soil.source === "ISRIC_SOILGRIDS_REST";
+  const soilTexture = farmerSoilTextureProvided
+    ? farm?.soilTexture
+    : soilIsSoilGrids ? soil?.soilTexture ?? soil?.texture : null;
+  const soilPh = farmerSoilPhProvided
+    ? farm?.soilPh
+    : soilIsSoilGrids ? soil?.soilPh ?? soil?.ph : null;
+  const soilSource =
+    farmerSoilProvided && soilIsSoilGrids
+      ? "FARMER + ISRIC"
+      : farmerSoilProvided
+        ? "FARMER PROVIDED"
+        : soilIsSoilGrids ? "ISRIC ESTIMATE" : "UNAVAILABLE";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -95,7 +103,7 @@ export function NasaContextModal({
                 <span>{t.nasaSmapTitle}</span>
               </div>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                SPL4SMGP (9 km)
+                {smap.source || "NASA_EARTHDATA_UNAVAILABLE"} (9 km)
               </span>
             </div>
 
@@ -105,7 +113,7 @@ export function NasaContextModal({
                   Surface Moisture (০-৫ সেমি)
                 </span>
                 <span className="text-lg font-black text-blue-600 dark:text-blue-400">
-                  {smapSurface} m³/m³
+                  {display(nasaContext?.smapSurface, smapIsLive)} m³/m³
                 </span>
               </div>
               <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -113,15 +121,24 @@ export function NasaContextModal({
                   Rootzone Moisture (০-১০০ সেমি)
                 </span>
                 <span className="text-lg font-black text-blue-700 dark:text-blue-300">
-                  {smapRootzone} m³/m³
+                  {display(nasaContext?.smapRootzone, smapIsLive)} m³/m³
                 </span>
               </div>
             </div>
 
             <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-1">
-              <span>Granule Date: {smapDate}</span>
-              <span className="text-emerald-600 font-bold">✓ Recent 7-Day Window</span>
+              <span>Granule Date: {smap.smapGranuleDate || "—"}</span>
+              <span className="text-amber-700 dark:text-amber-300 font-bold">
+                {smap.source === "NASA_EARTHDATA_LIVE"
+                  ? `${smap.nearestCellDistanceKm ?? "—"} km · ${smap.cellLatitude ?? ""}, ${smap.cellLongitude ?? ""}`
+                  : language === "bn"
+                    ? "লাইভ গ্রানুল পাওয়া যায়নি"
+                    : "No live granule"}
+              </span>
             </div>
+            {smap.warning && (
+              <p className="text-xs text-amber-800 dark:text-amber-200">{smap.warning}</p>
+            )}
           </div>
 
           {/* NASA POWER Card */}
@@ -132,26 +149,32 @@ export function NasaContextModal({
                 <span>{t.nasaPowerTitle}</span>
               </div>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-yellow-300">
-                Rolling 90 Days
+                {power.source || "NASA_POWER_UNAVAILABLE"}
               </span>
             </div>
+
+            {power.warning && (
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                {power.warning}
+              </p>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center">
               <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
                 <span className="text-[11px] text-gray-500 block">Mean Temp</span>
-                <span className="font-extrabold text-gray-900 dark:text-white text-sm">{meanTemp} °C</span>
+                <span className="font-extrabold text-gray-900 dark:text-white text-sm">{display(nasaContext?.powerMeanTemp, powerIsLive)} °C</span>
               </div>
               <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
                 <span className="text-[11px] text-gray-500 block">Total Rain</span>
-                <span className="font-extrabold text-blue-600 text-sm">{totalPrecip} mm</span>
+                <span className="font-extrabold text-blue-600 text-sm">{display(nasaContext?.powerTotalPrecip, powerIsLive)} mm</span>
               </div>
               <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
                 <span className="text-[11px] text-gray-500 block">Solar Rad</span>
-                <span className="font-extrabold text-amber-600 text-sm">{solarRad} MJ/m²</span>
+                <span className="font-extrabold text-amber-600 text-sm">{display(nasaContext?.powerSolarRad, powerIsLive)} MJ/m²/day</span>
               </div>
               <div className="p-2.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
                 <span className="text-[11px] text-gray-500 block">Heat Days</span>
-                <span className="font-extrabold text-red-600 text-sm">{heatDays} দিন</span>
+                <span className="font-extrabold text-red-600 text-sm">{display(nasaContext?.powerHeatDays, powerIsLive)}</span>
               </div>
             </div>
           </div>
@@ -163,12 +186,12 @@ export function NasaContextModal({
                 {t.faoEt0Title}
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                {etSource}
+                {nasaContext?.etSource || "UNAVAILABLE"}
               </span>
             </div>
             <div className="flex items-baseline gap-2 pt-1">
               <span className="text-2xl font-black text-agrogreen-700 dark:text-yellow-400">
-                {et0} mm/day
+                {display(nasaContext?.et0Mean, powerIsLive)} mm/day
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 (Penman-Monteith daily reference water consumption)
@@ -189,11 +212,11 @@ export function NasaContextModal({
             <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
               <div>
                 <span className="text-gray-500">Soil Texture:</span>{" "}
-                <span className="font-bold text-gray-800 dark:text-gray-200 capitalize">{soilTexture.replace('_', ' ')}</span>
+                <span className="font-bold text-gray-800 dark:text-gray-200 capitalize">{soilTexture?.replace("_", " ") || "—"}</span>
               </div>
               <div>
                 <span className="text-gray-500">Soil pH:</span>{" "}
-                <span className="font-bold text-gray-800 dark:text-gray-200">{soilPh}</span>
+                <span className="font-bold text-gray-800 dark:text-gray-200">{display(soilPh)}</span>
               </div>
             </div>
           </div>

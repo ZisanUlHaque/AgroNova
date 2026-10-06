@@ -1,6 +1,6 @@
 import { offlineDb } from "./offlineDb";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -113,7 +113,7 @@ export const api = {
     return { ok: true, status: 200, data: { success: true, farms: localFarms }, isOffline: true };
   },
 
-  async createFarm(farmData: { name: string; lat: number; lon: number; areaHectares: number; soilTexture?: string; soilPh?: number }, isSimulatedOffline: boolean = false) {
+  async createFarm(farmData: { name: string; lat: number; lon: number; areaHectares: number; soilTexture?: string | null; soilPh?: number | null }, isSimulatedOffline: boolean = false) {
     if (isSimulatedOffline) {
       const offlineId = "offline_farm_" + Date.now();
       const localFarm = {
@@ -125,7 +125,12 @@ export const api = {
         areaHectares: farmData.areaHectares,
         soilTexture: farmData.soilTexture,
         soilPh: farmData.soilPh,
-        soilSource: farmData.soilPh != null ? "MEASURED" : "ESTIMATED",
+        soilSource:
+          farmData.soilTexture != null && farmData.soilPh != null
+            ? "MEASURED"
+            : farmData.soilTexture != null || farmData.soilPh != null
+              ? "MIXED"
+              : "ESTIMATED",
         updatedAt: new Date().toISOString(),
       };
       await offlineDb.saveFarm(localFarm);
@@ -138,6 +143,27 @@ export const api = {
       body: JSON.stringify(farmData),
     });
 
+    if (res.ok && res.data.farm) {
+      await offlineDb.saveFarm(res.data.farm);
+    }
+    return res;
+  },
+
+  async updateFarm(
+    farmId: string,
+    farmData: {
+      name: string;
+      lat: number;
+      lon: number;
+      areaHectares: number;
+      soilTexture?: string | null;
+      soilPh?: number | null;
+    }
+  ) {
+    const res = await request(`/farms/${farmId}`, {
+      method: "PATCH",
+      body: JSON.stringify(farmData),
+    });
     if (res.ok && res.data.farm) {
       await offlineDb.saveFarm(res.data.farm);
     }
@@ -198,7 +224,7 @@ export const api = {
     if (res.ok && res.data.plan) {
       // Save to IndexedDB for offline access
       await offlineDb.savePlan(farmId, targetGoal, res.data.plan, res.data.alternativePlan, res.data.dataFreshness);
-    } else if (!res.ok) {
+    } else if (res.status === 0) {
       // If network fails, check IndexedDB fallback
       const saved = await offlineDb.getPlan(farmId);
       if (saved) {

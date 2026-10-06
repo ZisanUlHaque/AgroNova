@@ -44,8 +44,8 @@ services:
       DATABASE_URL: postgresql://terrashift:terrashift@postgres:5432/terrashift
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-terrashift-secret-2026}
-      EARTHDATA_USERNAME: ${EARTHDATA_USERNAME:-}
-      EARTHDATA_PASSWORD: ${EARTHDATA_PASSWORD:-}
+      NASA_INGEST_WORKER_URL: http://worker:8010
+      NASA_INGEST_TIMEOUT_MS: 120000
       POWER_TTL_HOURS: 24
       SMAP_TTL_DAYS: 7
     ports:
@@ -55,6 +55,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      worker:
+        condition: service_healthy
 
   worker:
     build:
@@ -62,7 +64,11 @@ services:
       dockerfile: Dockerfile
     container_name: terrashift-worker
     restart: always
+    command: ["python", "worker.py", "--serve"]
     environment:
+      NASA_WORKER_PORT: 8010
+      POWER_TTL_HOURS: 24
+      SMAP_TTL_DAYS: 7
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://terrashift:terrashift@postgres:5432/terrashift
       EARTHDATA_USERNAME: ${EARTHDATA_USERNAME:-}
@@ -72,6 +78,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    expose:
+      - "8010"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   web:
     build:
@@ -80,7 +97,8 @@ services:
     container_name: terrashift-web
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
+      NEXT_PUBLIC_API_URL: /api/v1
+      API_INTERNAL_URL: http://api:5000/api/v1
     ports:
       - "3000:3000"
     depends_on:

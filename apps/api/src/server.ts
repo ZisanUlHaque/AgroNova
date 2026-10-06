@@ -53,9 +53,15 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 if (process.env.NODE_ENV !== "test") {
-  app.listen(config.port, () => {
-    console.log(`\n🌱 TerraShift API server listening on http://localhost:${config.port}/api/v1`);
-    console.log(`📊 Health check: http://localhost:${config.port}/api/v1/health\n`);
+  db.checkConnection().then((connected) => {
+    if (connected) {
+      console.log("PostgreSQL/PostGIS connection established.");
+    } else {
+      console.warn("PostgreSQL unavailable; API is using the in-memory fallback store.");
+    }
+    app.listen(config.port, () => {
+      console.log(`\n🌱 TerraShift API server listening on http://localhost:${config.port}/api/v1`);
+      console.log(`📊 Health check: http://localhost:${config.port}/api/v1/health\n`);
+    });
   });
 }
-

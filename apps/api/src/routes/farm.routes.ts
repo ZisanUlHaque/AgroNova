@@ -11,17 +11,21 @@ const createFarmSchema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   areaHectares: z.number().positive("Area in hectares must be positive"),
-  soilTexture: z.string().optional(),
-  soilPh: z.number().min(3).max(10).optional(),
+  soilTexture: z.string().nullable().optional(),
+  soilPh: z.number().min(3).max(10).nullable().optional(),
 });
 
-const updateSoilSchema = z.object({
-  soilTexture: z.string().optional(),
-  soilPh: z.number().min(3).max(10).optional(),
-  soilSource: z.enum(["ESTIMATED", "MEASURED", "DEFAULT"]).optional().default("MEASURED"),
+const updateFarmSchema = z.object({
+  name: z.string().min(2).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lon: z.number().min(-180).max(180).optional(),
+  areaHectares: z.number().positive().optional(),
+  soilTexture: z.string().nullable().optional(),
+  soilPh: z.number().min(3).max(10).nullable().optional(),
+  soilSource: z.enum(["ESTIMATED", "MEASURED", "DEFAULT", "MIXED"]).optional(),
 });
 
-// POST /farms - create farm + trigger NASA ingest
+// POST /farms - persist farm metadata; recommendations trigger NASA ingestion
 farmRouter.post("/", authenticate, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const parse = createFarmSchema.safeParse(req.body);
@@ -44,24 +48,18 @@ farmRouter.post("/", authenticate, async (req: AuthenticatedRequest, res: Respon
       areaHectares,
       soilTexture,
       soilPh,
-      soilSource: soilPh != null ? "MEASURED" : "ESTIMATED",
+      soilSource:
+        soilTexture != null && soilPh != null
+          ? "MEASURED"
+          : soilTexture != null || soilPh != null
+            ? "MIXED"
+            : "ESTIMATED",
     });
-
-    // Ingest NASA climate & soil moisture
-    let nasaCache = null;
-    try {
-      nasaCache = await nasaService.ingestForFarm(farm.id, farm.latitude, farm.longitude);
-    } catch (ingestErr) {
-      console.warn("Background NASA ingest delayed:", ingestErr);
-    }
 
     return res.status(201).json({
       success: true,
-      message: "Farm created successfully.",
-      farm: {
-        ...farm,
-        nasaCache: nasaCache || null,
-      },
+      message: "Farm created successfully. NASA data will be fetched when a recommendation is requested.",
+      farm,
     });
   } catch (err: any) {
     return res.status(500).json({
@@ -144,7 +142,7 @@ farmRouter.patch("/:id", authenticate, async (req: AuthenticatedRequest, res: Re
     const isOwner = await verifyFarmOwnership(req, res, farmId);
     if (!isOwner) return;
 
-    const parse = updateSoilSchema.safeParse(req.body);
+    const parse = updateFarmSchema.safeParse(req.body);
     if (!parse.success) {
       return res.status(400).json({
         success: false,
@@ -153,11 +151,27 @@ farmRouter.patch("/:id", authenticate, async (req: AuthenticatedRequest, res: Re
       });
     }
 
-    const updated = await db.updateFarm(farmId, {
-      soilTexture: parse.data.soilTexture,
-      soilPh: parse.data.soilPh,
-      soilSource: parse.data.soilSource || "MEASURED",
-    });
+    const update: Parameters<typeof db.updateFarm>[1] = {};
+    if (parse.data.name !== undefined) update.name = parse.data.name;
+    if (parse.data.lat !== undefined) update.latitude = parse.data.lat;
+    if (parse.data.lon !== undefined) update.longitude = parse.data.lon;
+    if (parse.data.areaHectares !== undefined) update.areaHectares = parse.data.areaHectares;
+    if (parse.data.soilTexture !== undefined) update.soilTexture = parse.data.soilTexture;
+    if (parse.data.soilPh !== undefined) update.soilPh = parse.data.soilPh;
+    if (parse.data.soilSource !== undefined) update.soilSource = parse.data.soilSource;
+    if (parse.data.soilTexture !== undefined || parse.data.soilPh !== undefined) {
+      update.soilSource =
+        parse.data.soilTexture != null && parse.data.soilPh != null
+          ? "MEASURED"
+          : parse.data.soilTexture != null || parse.data.soilPh != null
+            ? "MIXED"
+            : "ESTIMATED";
+    }
+
+    const updated = await db.updateFarm(farmId, update);
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "Farm not found." });
+    }
 
     return res.json({
       success: true,
@@ -217,4 +231,3 @@ farmRouter.delete("/:id", authenticate, async (req: AuthenticatedRequest, res: R
     });
   }
 });
-

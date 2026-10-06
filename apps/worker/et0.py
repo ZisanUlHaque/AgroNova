@@ -1,5 +1,56 @@
 import math
 
+def compute_daily_et0_from_power(
+    t_max: float,
+    t_min: float,
+    dew_point: float,
+    wind_speed_2m: float,
+    solar_rad_mj_m2: float,
+    latitude: float,
+    day_of_year: int,
+    elevation_m: float = 10.0
+) -> float:
+    t_mean = (t_max + t_min) / 2.0
+    delta = calculate_slope_vapor_pressure(t_mean)
+    gamma = calculate_psychrometric_constant(elevation_m)
+    es = (calculate_saturation_vapor_pressure(t_max) + calculate_saturation_vapor_pressure(t_min)) / 2.0
+    ea = calculate_saturation_vapor_pressure(dew_point)
+    vpd = max(0.0, es - ea)
+
+    latitude_rad = math.radians(latitude)
+    inverse_distance = 1.0 + 0.033 * math.cos(2.0 * math.pi * day_of_year / 365.0)
+    solar_declination = 0.409 * math.sin(2.0 * math.pi * day_of_year / 365.0 - 1.39)
+    sunset_angle = math.acos(
+        max(-1.0, min(1.0, -math.tan(latitude_rad) * math.tan(solar_declination)))
+    )
+    extraterrestrial_radiation = (
+        24.0 * 60.0 / math.pi * 0.0820 * inverse_distance
+        * (
+            sunset_angle * math.sin(latitude_rad) * math.sin(solar_declination)
+            + math.cos(latitude_rad) * math.cos(solar_declination) * math.sin(sunset_angle)
+        )
+    )
+
+    rs = max(0.0, solar_rad_mj_m2)
+    rso = (0.75 + 2e-5 * elevation_m) * extraterrestrial_radiation
+    net_shortwave = 0.77 * rs
+    net_longwave = (
+        4.903e-9
+        * ((t_max + 273.16) ** 4 + (t_min + 273.16) ** 4) / 2.0
+        * (0.34 - 0.14 * math.sqrt(max(0.0, ea)))
+        * (1.35 * min(rs / rso, 1.0) - 0.35)
+        if rso > 0
+        else 0.0
+    )
+    net_radiation = net_shortwave - net_longwave
+    u2 = max(0.2, wind_speed_2m)
+    numerator = (
+        0.408 * delta * net_radiation
+        + gamma * (900.0 / (t_mean + 273.0)) * u2 * vpd
+    )
+    denominator = delta + gamma * (1.0 + 0.34 * u2)
+    return max(0.0, round(numerator / denominator, 2))
+
 def calculate_saturation_vapor_pressure(temp_c: float) -> float:
     """
     Computes saturation vapor pressure e°(T) in kPa for temperature T in Celsius.
