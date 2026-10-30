@@ -8,11 +8,18 @@ export const recommendationRouter = Router();
 
 const recommendSchema = z.object({
   farmId: z.string().min(1, "Farm ID is required"),
-  targetGoal: z.enum(["BALANCED", "CONSERVE_WATER", "RESTORE_NITROGEN"]).optional().default("BALANCED"),
+  targetGoal: z.enum(["BALANCED", "CONSERVE_WATER", "RESTORE_NITROGEN", "CUSTOM"]).optional().default("BALANCED"),
+  cycleYears: z.union([z.literal(3), z.literal(4)]).optional().default(3),
+  customWeights: z.object({
+    water: z.number(),
+    soil: z.number(),
+    nitrogen: z.number(),
+    heat: z.number(),
+  }).optional(),
   forceRefresh: z.boolean().optional().default(false),
 });
 
-// POST /recommendations - generate 4-year rotation plan
+// POST /recommendations - generate 3-year or 4-year rotation plan
 recommendationRouter.post("/", authenticate, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const parse = recommendSchema.safeParse(req.body);
@@ -24,7 +31,7 @@ recommendationRouter.post("/", authenticate, async (req: AuthenticatedRequest, r
       });
     }
 
-    const { farmId, targetGoal, forceRefresh } = parse.data;
+    const { farmId, targetGoal, cycleYears, customWeights, forceRefresh } = parse.data;
     const isOwner = await verifyFarmOwnership(req, res, farmId);
     if (!isOwner) return;
 
@@ -37,7 +44,9 @@ recommendationRouter.post("/", authenticate, async (req: AuthenticatedRequest, r
     const { result, dataFreshness } = await recommendationService.generateForFarm(
       farm,
       targetGoal,
-      forceRefresh
+      forceRefresh,
+      cycleYears,
+      customWeights
     );
     const executionTimeMs = Date.now() - startTime;
 
@@ -80,4 +89,3 @@ recommendationRouter.get("/farms/:id/rotations", authenticate, async (req: Authe
     });
   }
 });
-

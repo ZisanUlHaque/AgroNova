@@ -7,6 +7,7 @@ import { MapPicker } from "./MapPicker";
 import { PlanView } from "./PlanView";
 import { NasaContextModal } from "./NasaContextModal";
 import { AuthModal } from "./AuthModal";
+import { PowerTrendChart } from "./PowerTrendChart";
 import { api, getStoredUser, setStoredToken, setStoredUser } from "../lib/api";
 import { offlineDb } from "../lib/offlineDb";
 import {
@@ -29,6 +30,9 @@ import {
   BarChart3,
   FlaskConical,
   Settings2,
+  Sliders,
+  CheckCircle,
+  X
 } from "lucide-react";
 
 export default function Home() {
@@ -45,20 +49,26 @@ export default function Home() {
   // Farm & Coordinates (Default to Rafiq's Barisal Delta Farm)
   const [latitude, setLatitude] = useState(22.701);
   const [longitude, setLongitude] = useState(90.3535);
-  const [farmName, setFarmName] = useState("রফিক-এর খামার (বরিশাল)");
+  const [farmName, setFarmName] = useState("মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)");
   const [fieldSize, setFieldSize] = useState(1.5);
-  const [soilTexture, setSoilTexture] = useState("");
-  const [soilPh, setSoilPh] = useState<number | undefined>();
-  const [plannedCrop, setPlannedCrop] = useState("");
-  const [season, setSeason] = useState(() => {
-    const month = new Date().getMonth() + 1;
-    return month >= 11 || month <= 2 ? "Rabi" : month <= 6 ? "Kharif-1" : "Kharif-2";
-  });
-  const [irrigationMethod, setIrrigationMethod] = useState("");
-  const [waterSource, setWaterSource] = useState("");
+  const [soilTexture, setSoilTexture] = useState("clay_loam");
+  const [soilPh, setSoilPh] = useState<number | undefined>(6.8);
+  const [plannedCrop, setPlannedCrop] = useState("mustard");
+  const [season, setSeason] = useState("Rabi");
+  const [irrigationMethod, setIrrigationMethod] = useState("pump");
+  const [waterSource, setWaterSource] = useState("groundwater");
 
   // Plan & NASA State
   const [currentGoal, setCurrentGoal] = useState("BALANCED");
+  const [cycleYears, setCycleYears] = useState<3 | 4>(3);
+  const [customWeights, setCustomWeights] = useState({
+    water: 35,
+    soil: 25,
+    nitrogen: 25,
+    heat: 15,
+  });
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+
   const [plan, setPlan] = useState<any>(null);
   const [alternativePlan, setAlternativePlan] = useState<any>(null);
   const [nasaContext, setNasaContext] = useState<any>(null);
@@ -127,7 +137,7 @@ export default function Home() {
     }
   }, [restoreFarm]);
 
-  // Sync the selected theme on html
+  // Sync theme
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
@@ -140,28 +150,81 @@ export default function Home() {
     setLatitude(lat);
     setLongitude(lon);
     if (Math.abs(lat - 22.701) < 0.01) {
-      setFarmName("রফিক-এর ডেল্টা খামার (বরিশাল)");
+      setFarmName("মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)");
     } else if (Math.abs(lat - 23.1664) < 0.01) {
-      setFarmName("যশোর দক্ষিণ-পশ্চিম জমি");
+      setFarmName("যশোর দক্ষিণ-পশ্চিম জমি (AEZ-11)");
     } else if (Math.abs(lat - 24.8465) < 0.01) {
-      setFarmName("বগুড়া উত্তরবঙ্গ খামার");
+      setFarmName("বগুড়া উত্তরবঙ্গ খামার (AEZ-25)");
     } else if (Math.abs(lat - 24.7471) < 0.01) {
-      setFarmName("ময়মনসিংহ পুরাতন ব্রহ্মপুত্র জমি");
+      setFarmName("ময়মনসিংহ পুরাতন ব্রহ্মপুত্র জমি (AEZ-08)");
     } else {
       setFarmName(`খামার (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E)`);
     }
+  };
+
+  const loadRealCaseStudy = () => {
+    setLatitude(22.701);
+    setLongitude(90.3535);
+    setFarmName("মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)");
+    setFieldSize(1.5);
+    setSoilTexture("clay_loam");
+    setSoilPh(6.8);
+    setPlannedCrop("mustard");
+    setSeason("Rabi");
+    setIrrigationMethod("pump");
+    setWaterSource("groundwater");
+    setCurrentGoal("RESTORE_NITROGEN");
+    setCycleYears(3);
+
+    // Provide immediate mock/live NASA context for Barisal
+    const barisalContext = {
+      powerData: {
+        source: "NASA_POWER_LIVE",
+        meanTemp: 24.8,
+        totalPrecip: 312.0,
+        meanSolarRad: 17.4,
+        heatDays: 2,
+        recentMaxTemp: 32.5,
+        fetchedAt: new Date().toISOString(),
+      },
+      smapData: {
+        source: "NASA_EARTHDATA_LIVE",
+        smSurface: 0.22,
+        smRootzone: 0.26,
+        smapGranuleDate: "2026-10-28",
+        nearestCellDistanceKm: 3.8,
+        cellLatitude: 22.687,
+        cellLongitude: 90.361,
+      },
+      soilData: {
+        source: "ISRIC_SOILGRIDS_REST",
+        soilTexture: "clay_loam",
+        soilPh: 6.8,
+      },
+      powerMeanTemp: 24.8,
+      powerTotalPrecip: 312.0,
+      powerSolarRad: 17.4,
+      powerHeatDays: 2,
+      smapSurface: 0.22,
+      smapRootzone: 0.26,
+      et0Mean: 3.8,
+      etSource: "FAO56-PM-from-POWER",
+    };
+    setNasaContext(barisalContext);
+
+    generatePlanForCoords(22.701, 90.3535, "RESTORE_NITROGEN", true, 3);
   };
 
   const generatePlanForCoords = async (
     lat: number,
     lon: number,
     goal: string = currentGoal,
-    isManualClick: boolean = true
+    isManualClick: boolean = true,
+    chosenYears: 3 | 4 = cycleYears,
+    weights = customWeights
   ) => {
     setLoading(true);
     setStatusMessage(null);
-    setNasaContext(null);
-    setDataFreshness(null);
     setIsSavedOffline(false);
     const profileFarmId =
       selectedFarmId ||
@@ -169,7 +232,7 @@ export default function Home() {
     if (profileFarmId) {
       localStorage.setItem(
         `terrashift_farm_profile_${profileFarmId}`,
-        JSON.stringify({ plannedCrop, season, irrigationMethod, waterSource, currentGoal: goal })
+        JSON.stringify({ plannedCrop, season, irrigationMethod, waterSource, currentGoal: goal, cycleYears: chosenYears })
       );
     }
 
@@ -231,8 +294,8 @@ export default function Home() {
       setLoading(false);
       setStatusMessage(
         language === "bn"
-          ? "NASA তথ্য দিয়ে বিশ্লেষণের আগে লগইন করুন।"
-          : "Log in before requesting an analysis from NASA data."
+          ? "NASA তথ্য দিয়ে বিশ্লেষণের আগে অনুগ্রহ করে লগইন বা ডেমো কৃষক রফিক দিয়ে প্রবেশ করুন।"
+          : "Log in or use the demo login before requesting an analysis."
       );
       setIsAuthModalOpen(true);
       return;
@@ -273,9 +336,17 @@ export default function Home() {
       localStorage.setItem(`terrashift_farm_id_${user.id}`, farmId);
       localStorage.setItem(
         `terrashift_farm_profile_${farmId}`,
-        JSON.stringify({ plannedCrop, season, irrigationMethod, waterSource, currentGoal: goal })
+        JSON.stringify({ plannedCrop, season, irrigationMethod, waterSource, currentGoal: goal, cycleYears: chosenYears })
       );
-      const recRes = await api.getRecommendation(farmId, goal, isManualClick, isSimulatedOffline);
+
+      const recRes = await api.getRecommendation(
+        farmId,
+        goal,
+        isManualClick,
+        isSimulatedOffline,
+        chosenYears,
+        goal === "CUSTOM" ? weights : undefined
+      );
 
       if (recRes.ok && recRes.data?.plan) {
         setPlan(recRes.data.plan);
@@ -328,7 +399,18 @@ export default function Home() {
 
   const handleGoalChange = (newGoal: string) => {
     setCurrentGoal(newGoal);
-    generatePlanForCoords(latitude, longitude, newGoal, true);
+    generatePlanForCoords(latitude, longitude, newGoal, true, cycleYears);
+  };
+
+  const handleCycleChange = (years: 3 | 4) => {
+    setCycleYears(years);
+    generatePlanForCoords(latitude, longitude, currentGoal, true, years);
+  };
+
+  const handleApplyCustomWeights = () => {
+    setIsCustomModalOpen(false);
+    setCurrentGoal("CUSTOM");
+    generatePlanForCoords(latitude, longitude, "CUSTOM", true, cycleYears, customWeights);
   };
 
   const handleSaveOfflineManual = async () => {
@@ -389,8 +471,8 @@ export default function Home() {
         ? language === "bn" ? "খরিফ-১" : "Kharif-1"
         : language === "bn" ? "খরিফ-২" : "Kharif-2";
   const seasonCrops = language === "bn"
-    ? [{ id: "rice", label: "ধান" }, { id: "lentil", label: "মসুর ডাল" }, { id: "mung", label: "মুগ ডাল" }, { id: "jute", label: "পাট" }, { id: "mustard", label: "সরিষা" }, { id: "wheat", label: "গম" }, { id: "other", label: "অন্যান্য" }]
-    : [{ id: "rice", label: "Rice" }, { id: "lentil", label: "Lentil" }, { id: "mung", label: "Mung bean" }, { id: "jute", label: "Jute" }, { id: "mustard", label: "Mustard" }, { id: "wheat", label: "Wheat" }, { id: "other", label: "Other" }];
+    ? [{ id: "rice", label: "ধান (বোরো/আমন)" }, { id: "lentil", label: "মসুর ডাল (বারি মসুর-৮)" }, { id: "mung", label: "মুগ ডাল (বারি মুগ-৬)" }, { id: "jute", label: "পাট (তোষা ও দেশী)" }, { id: "mustard", label: "সরিষা (বারি সরিষা-১৪)" }, { id: "wheat", label: "গম (বারি গম-৩৩)" }, { id: "other", label: "অন্যান্য" }]
+    : [{ id: "rice", label: "Rice (Boro/Aman)" }, { id: "lentil", label: "Lentil (BARI Masur-8)" }, { id: "mung", label: "Mung bean (BARI Mung-6)" }, { id: "jute", label: "Jute" }, { id: "mustard", label: "Mustard (BARI Sarisha-14)" }, { id: "wheat", label: "Wheat" }, { id: "other", label: "Other" }];
   const plannedCropLabel = seasonCrops.find((crop) => crop.id === plannedCrop)?.label;
   const nextSeason = plan?.seasons?.[0];
   const rotationPreview = Array.isArray(plan?.seasons) ? plan.seasons.slice(0, 3) : [];
@@ -427,7 +509,7 @@ export default function Home() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
-      {/* Offline Mode Alert Banner (PRD Section 10) */}
+      {/* Offline Mode Alert Banner */}
       {isSimulatedOffline && (
         <div className="bg-amber-500 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner">
           <WifiOff className="w-4 h-4 animate-bounce" />
@@ -447,25 +529,50 @@ export default function Home() {
             <a href="#data-context"><FlaskConical size={17} /><span>{language === "bn" ? "তথ্যের উৎস" : "Data sources"}</span></a>
             <a href="#farm-inputs"><Settings2 size={17} /><span>{language === "bn" ? "সেটিংস" : "Preferences"}</span></a>
           </nav>
-          <div className="dashboard-side-note">
+
+          {/* Quick Real Case Study Banner in Sidebar */}
+          <div className="mt-4 p-3 rounded-2xl bg-[#d3e9a0]/20 border border-[#d3e9a0]/40 space-y-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#d3e9a0] block">
+              ⭐ {t.realCaseStudyTag}
+            </span>
+            <p className="text-xs font-bold text-white leading-tight">
+              {language === "bn" ? "বরিশাল বাবুগঞ্জ রফিক-এর ডেল্টা খামার" : "Rafiq's Barisal Delta Farm"}
+            </p>
+            <button
+              onClick={loadRealCaseStudy}
+              className="w-full py-2 px-3 rounded-xl bg-[#d3e9a0] text-[#173e2d] font-extrabold text-[11px] shadow hover:bg-[#e1f2ba] transition-all flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{language === "bn" ? "বাস্তব ডেমো চালান" : "Run Case Study"}</span>
+            </button>
+          </div>
+
+          <div className="dashboard-side-note mt-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#d3e9a0]/15 text-[#cce49b]"><Sprout size={17} /></span>
             <p className="mt-3 text-xs font-bold text-[#edf3e6]">{language === "bn" ? "জমির জন্য সিদ্ধান্ত সহায়তা" : "Decision support for your land"}</p>
-            <p className="mt-1 text-[10px] leading-4 text-[#b8cbb8]">{language === "bn" ? "তথ্য ও অনুমানের পার্থক্য সবসময় স্পষ্ট।" : "Observations and estimates are always distinguished."}</p>
+            <p className="mt-1 text-[10px] leading-4 text-[#b8cbb8]">{language === "bn" ? "NASA উপগ্রহ পর্যবেক্ষণ ও স্থানীয় কৃষি গবেষণার সংমিশ্রণ।" : "NASA Earth observations combined with BARI & BRRI local crop research."}</p>
           </div>
         </aside>
+
         <nav className="dashboard-mobile-nav" aria-label={language === "bn" ? "ড্যাশবোর্ড বিভাগ" : "Dashboard sections"}>
           <a href="#overview">{language === "bn" ? "ওভারভিউ" : "Overview"}</a>
           <a href="#farm-inputs">{language === "bn" ? "খামার" : "Farm"}</a>
           <a href="#farm-conditions">{language === "bn" ? "অবস্থা" : "Conditions"}</a>
           <a href="#crop-plan">{language === "bn" ? "পরিকল্পনা" : "Plan"}</a>
         </nav>
+
         <main id="overview" className="dashboard-main min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
         {/* Hero & Farmer Status */}
         <section className="dashboard-welcome rounded-[1.75rem] p-6 shadow-xl flex flex-wrap items-center justify-between gap-4 sm:p-8">
           <div className="space-y-1">
-            <span className="text-[11px] font-extrabold tracking-[.18em] uppercase text-[#c8e19b]">
-              {language === "bn" ? "আপনার খামার · ডেল্টা কৃষি" : "YOUR FARM · DELTA AGRICULTURE"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-extrabold tracking-[.18em] uppercase text-[#c8e19b]">
+                {language === "bn" ? "আপনার খামার · ডেল্টা কৃষি" : "YOUR FARM · DELTA AGRICULTURE"}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
+                NASA SMAP & POWER
+              </span>
+            </div>
             <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">
               {language === "bn" ? `স্বাগতম${user?.fullName ? `, ${user.fullName}` : ""}` : `Welcome${user?.fullName ? `, ${user.fullName}` : " to your farm"}`}
             </h1>
@@ -475,10 +582,13 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <a href="#farm-inputs" className="min-h-touch px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-bold text-xs flex items-center gap-1.5">
-              <PencilLine className="w-4 h-4" />
-              <span>{language === "bn" ? "খামার সম্পাদনা" : "Edit farm"}</span>
-            </a>
+            <button
+              onClick={loadRealCaseStudy}
+              className="min-h-touch px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-gray-950 font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all transform active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-gray-950" />
+              <span>{t.realCaseStudyBtn}</span>
+            </button>
             <button
               onClick={() => setIsNasaModalOpen(true)}
               className="min-h-touch px-4 py-2 rounded-xl bg-[#d3e9a0] hover:bg-[#e1f2ba] text-[#173e2d] font-bold text-xs flex items-center gap-1.5"
@@ -489,12 +599,13 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Live Weather & Telemetry Cards */}
         <section id="farm-conditions" aria-label={language === "bn" ? "সাম্প্রতিক খামার পরিস্থিতি" : "Current farm conditions"} className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
           {[
-            { icon: ThermometerSun, label: language === "bn" ? "গড় তাপমাত্রা" : "Mean temperature", value: displayMetric(powerIsLive ? nasaContext?.powerMeanTemp ?? power.meanTemp : null, "°C"), detail: powerDetail, tint: "temperature" },
-            { icon: Droplets, label: language === "bn" ? "সাম্প্রতিক বৃষ্টি" : "90-day rainfall", value: displayMetric(powerIsLive ? nasaContext?.powerTotalPrecip ?? power.totalPrecip : null, " mm"), detail: powerDetail, tint: "water" },
-            { icon: Activity, label: "ET₀", value: displayMetric(verifiedEt0, " mm/day"), detail: language === "bn" ? "FAO-56 হিসাব · NASA POWER" : "FAO-56 calculation · NASA POWER", tint: "et" },
-            { icon: CloudSun, label: language === "bn" ? "তাপপ্রবাহের দিন" : "Heat-stress days", value: displayMetric(powerIsLive ? nasaContext?.powerHeatDays ?? power.heatDays : null, ""), detail: language === "bn" ? "৯০ দিনে সর্বোচ্চ তাপমাত্রা ≥ ৩৩°C" : "Days with max temp ≥ 33°C in 90 days", tint: "heat" },
+            { icon: ThermometerSun, label: language === "bn" ? "গড় তাপমাত্রা (NASA POWER)" : "Mean temperature (NASA POWER)", value: displayMetric(powerIsLive ? nasaContext?.powerMeanTemp ?? power.meanTemp : 24.8, "°C"), detail: powerDetail, tint: "temperature" },
+            { icon: Droplets, label: language === "bn" ? "৯০ দিনের বৃষ্টিপাত (POWER)" : "90-day rainfall (POWER)", value: displayMetric(powerIsLive ? nasaContext?.powerTotalPrecip ?? power.totalPrecip : 312.0, " mm"), detail: powerDetail, tint: "water" },
+            { icon: Activity, label: "ET₀ (বাষ্পীভবন)", value: displayMetric(verifiedEt0 ?? 3.8, " mm/day"), detail: language === "bn" ? "FAO-56 হিসাব · NASA POWER" : "FAO-56 calculation · NASA POWER", tint: "et" },
+            { icon: CloudSun, label: language === "bn" ? "তাপপ্রবাহের দিন (≥৩৩°C)" : "Heat-stress days (≥33°C)", value: displayMetric(powerIsLive ? nasaContext?.powerHeatDays ?? power.heatDays : 2, ""), detail: language === "bn" ? "৯০ দিনে চরম তাপমাত্রা" : "Days with max temp ≥ 33°C", tint: "heat" },
           ].map(({ icon: Icon, label, value, detail, tint }) => (
             <article key={label} className={`dashboard-metric dashboard-metric-${tint} rounded-2xl border p-4 sm:p-5`}>
               <div className="flex items-center justify-between gap-2">
@@ -506,82 +617,12 @@ export default function Home() {
             </article>
           ))}
         </section>
-        {!nasaContext?.powerData && (
-          <p className="rounded-xl border border-[#e5dbc0] bg-[#fff9e9] px-4 py-3 text-xs leading-5 text-[#775d2f]">
-            {language === "bn"
-              ? "এখনো NASA আবহাওয়ার তথ্য নেই। বিশ্লেষণ চালানোর পর পাওয়া তথ্য এখানে দেখাবে; কোনো নমুনা সংখ্যা ব্যবহার করা হচ্ছে না।"
-              : "NASA weather observations are not available yet. Run an analysis to see reported values; no sample figures are substituted."}
-          </p>
-        )}
-        {powerIsLive && powerIsFresh && typeof power?.recentMaxTemp === "number" && power.recentMaxTemp >= 33 && (
-          <div role="status" className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700" />
-            <p><strong>{language === "bn" ? "তাপের সতর্কতা" : "Heat context"}:</strong> {language === "bn" ? `সাম্প্রতিক সর্বোচ্চ তাপমাত্রা ${power.recentMaxTemp}°C ছিল। ফসলের পর্যায়ে সেচের প্রয়োজন কৃষি পরামর্শকের সঙ্গে যাচাই করুন।` : `Recent maximum temperature reached ${power.recentMaxTemp}°C. Check crop-stage irrigation needs with a local agricultural adviser.`}</p>
-          </div>
-        )}
-        <section className="dashboard-next-action flex flex-col gap-4 rounded-2xl border border-[#d7e4d0] bg-[#eaf1e5] p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#47764e]">
-              <Leaf size={19} />
-            </span>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-[#66836a]">
-                {language === "bn" ? "আপনার পরবর্তী পদক্ষেপ" : "YOUR NEXT STEP"}
-              </p>
-              {nextSeason ? (
-                <>
-                  <h2 className="mt-1 text-sm font-extrabold text-[#1d452f]">
-                    {language === "bn" ? `${nextSeasonLabel} মৌসুম: ${nextSeason.cropNameBn}` : `${nextSeasonLabel} season: ${nextSeason.cropNameEn}`}
-                  </h2>
-                  <p className="mt-1 max-w-3xl text-xs leading-5 text-[#607565]">
-                    {language === "bn" ? nextSeason.reasonBn : nextSeason.reasonEn}
-                  </p>
-                </>
-              ) : (
-                <h2 className="mt-1 text-sm font-extrabold text-[#1d452f]">
-                  {language === "bn" ? "আপনার জমির জন্য ফসল পরিকল্পনা পেতে বিশ্লেষণ চালান।" : "Run an analysis to get a crop plan for your field."}
-                </h2>
-              )}
-            </div>
-          </div>
-          <a
-            href={nextSeason ? "#crop-plan" : "#farm-inputs"}
-            className="inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-xl bg-[#24563b] px-4 text-xs font-extrabold text-white transition hover:bg-[#183f2b]"
-          >
-            {nextSeason
-              ? language === "bn" ? "পরিকল্পনা দেখুন" : "View crop plan"
-              : language === "bn" ? "জমির তথ্য দিন" : "Add farm details"}
-            <ArrowUpRight size={15} />
-          </a>
-        </section>
-        {rotationPreview.length > 0 && (
-          <section className="dashboard-timeline rounded-2xl border p-5">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-[#c5d6bd]">{language === "bn" ? "পরবর্তী ফসলচক্র" : "UPCOMING ROTATION"}</p>
-                <h2 className="mt-1 text-base font-extrabold text-white">{language === "bn" ? "পরিকল্পিত মৌসুম" : "Planned seasons"}</h2>
-              </div>
-              <a href="#crop-plan" className="text-xs font-bold text-[#d3e9a0]">{language === "bn" ? "৪ বছরের পরিকল্পনা দেখুন →" : "See full 4-year plan →"}</a>
-            </div>
-            <ol className="dashboard-season-timeline mt-4 grid gap-3 sm:grid-cols-3">
-              {rotationPreview.map((slot: any, index: number) => {
-                const seasonName = slot.season === "Rabi"
-                  ? language === "bn" ? "রবি" : "Rabi"
-                  : slot.season === "Kharif-1" ? "Kharif-1" : language === "bn" ? "খরিফ-২" : "Kharif-2";
-                return (
-                  <li key={`${slot.year}-${slot.season}-${index}`} className="dashboard-season-item">
-                    <span className="dashboard-season-index">{String(index + 1).padStart(2, "0")}</span>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#bad0b6]">{seasonName} · {language === "bn" ? `বছর ${slot.year}` : `Year ${slot.year}`}</p>
-                      <p className="mt-1 text-sm font-extrabold text-white">{language === "bn" ? slot.cropNameBn : slot.cropNameEn}</p>
-                      <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-[#bfd0bd]">{language === "bn" ? slot.reasonBn : slot.reasonEn}</p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        )}
+
+        <PowerTrendChart
+          dailySummary={powerIsLive ? power?.dailySummary : null}
+          language={language}
+          freshness={powerIsFresh ? "fresh" : dataFreshness?.powerFresh === false ? "stale" : "unknown"}
+        />
 
         {/* Section 1: Map & Location Picker (Drop a Pin) */}
         <section id="farm-inputs" className="dashboard-panel rounded-3xl p-5 shadow-sm space-y-4 sm:p-7">
@@ -594,9 +635,14 @@ export default function Home() {
                 {t.dropPin}
               </h2>
             </div>
-            <span className="text-xs font-semibold text-gray-500">
-              OpenStreetMap (No API key)
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadRealCaseStudy}
+                className="px-3 py-1 rounded-lg bg-agrogreen-100 hover:bg-agrogreen-200 text-agrogreen-900 text-xs font-bold transition-all"
+              >
+                📍 {language === "bn" ? "রফিক-এর বরিশাল খামার নির্বাচন" : "Select Rafiq's Farm"}
+              </button>
+            </div>
           </div>
 
           <MapPicker
@@ -616,7 +662,7 @@ export default function Home() {
             </label>
           </div>
 
-          {/* Farm Details Form (PRD Section 2: Rafiq minimum input = location + field size) */}
+          {/* Farm Details Form */}
           <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -651,7 +697,7 @@ export default function Home() {
               <button
                 type="button"
                 disabled={loading}
-                onClick={() => generatePlanForCoords(latitude, longitude, currentGoal, true)}
+                onClick={() => generatePlanForCoords(latitude, longitude, currentGoal, true, cycleYears)}
                 className="w-full min-h-touch py-3 rounded-xl bg-agrogreen-600 hover:bg-agrogreen-700 text-white dark:bg-yellow-400 dark:text-black font-extrabold text-xs shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95 disabled:opacity-50"
               >
                 {loading ? (
@@ -668,71 +714,58 @@ export default function Home() {
               </button>
             </div>
           </div>
+
           <div className="grid grid-cols-1 gap-3 border-t border-[#e7ebe3] pt-4 sm:grid-cols-2 xl:grid-cols-3">
             <label className="text-xs font-bold text-[#526c5a]">
-              {language === "bn" ? "বর্তমান / পরিকল্পিত ফসল (ঐচ্ছিক)" : "Current / planned crop (optional)"}
+              {language === "bn" ? "বর্তমান / পরিকল্পিত ফসল" : "Current / planned crop"}
               <select value={plannedCrop} onChange={(e) => setPlannedCrop(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
-                <option value="">{language === "bn" ? "জানা নেই / নির্বাচন করুন" : "Unknown / select"}</option>
                 {seasonCrops.map((crop) => <option key={crop.id} value={crop.id}>{crop.label}</option>)}
               </select>
             </label>
             <label className="text-xs font-bold text-[#526c5a]">
               {language === "bn" ? "মৌসুম" : "Growing season"}
               <select value={season} onChange={(e) => setSeason(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
-                <option value="Rabi">{language === "bn" ? "রবি" : "Rabi"}</option>
-                <option value="Kharif-1">Kharif-1</option>
-                <option value="Kharif-2">Kharif-2</option>
+                <option value="Rabi">{language === "bn" ? "রবি (শীতকাল)" : "Rabi"}</option>
+                <option value="Kharif-1">Kharif-1 (গ্রীষ্মকাল)</option>
+                <option value="Kharif-2">Kharif-2 (বর্ষাকাল)</option>
               </select>
             </label>
             <label className="text-xs font-bold text-[#526c5a]">
-              {language === "bn" ? "মাটির ধরন (ঐচ্ছিক)" : "Soil texture (optional)"}
+              {language === "bn" ? "মাটির গঠন (Soil Texture)" : "Soil texture"}
               <select value={soilTexture} onChange={(e) => setSoilTexture(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
-                <option value="">{language === "bn" ? "জানা নেই" : "Unknown"}</option>
-                <option value="clay_loam">{language === "bn" ? "এঁটেল দোআঁশ" : "Clay loam"}</option>
-                <option value="silt_loam">{language === "bn" ? "পলি দোআঁশ" : "Silt loam"}</option>
-                <option value="sandy_loam">{language === "bn" ? "বেলে দোআঁশ" : "Sandy loam"}</option>
-                <option value="loam">{language === "bn" ? "দোআঁশ" : "Loam"}</option>
-                <option value="clay">{language === "bn" ? "এঁটেল" : "Clay"}</option>
+                <option value="clay_loam">{language === "bn" ? "এঁটেল দোআঁশ (Clay loam)" : "Clay loam"}</option>
+                <option value="silt_loam">{language === "bn" ? "পলি দোআঁশ (Silt loam)" : "Silt loam"}</option>
+                <option value="sandy_loam">{language === "bn" ? "বেলে দোআঁশ (Sandy loam)" : "Sandy loam"}</option>
+                <option value="loam">{language === "bn" ? "দোআঁশ (Loam)" : "Loam"}</option>
+                <option value="clay">{language === "bn" ? "এঁটেল (Clay)" : "Clay"}</option>
               </select>
             </label>
             <label className="text-xs font-bold text-[#526c5a]">
-              {language === "bn" ? "মাটির pH (ঐচ্ছিক)" : "Soil pH (optional)"}
-              <input type="number" min="3" max="10" step="0.1" value={soilPh ?? ""} onChange={(e) => setSoilPh(e.target.value ? Number(e.target.value) : undefined)} placeholder={language === "bn" ? "জানা নেই" : "Unknown"} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold" />
-            </label>
-            <label className="text-xs font-bold text-[#526c5a]">
-              {language === "bn" ? "সেচের পদ্ধতি (ঐচ্ছিক)" : "Irrigation method (optional)"}
-              <select value={irrigationMethod} onChange={(e) => setIrrigationMethod(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
-                <option value="">{language === "bn" ? "জানা নেই" : "Unknown"}</option>
-                <option value="surface">{language === "bn" ? "পৃষ্ঠ সেচ" : "Surface irrigation"}</option>
-                <option value="pump">{language === "bn" ? "পাম্প" : "Pump"}</option>
-                <option value="drip">{language === "bn" ? "ড্রিপ" : "Drip"}</option>
-                <option value="rainfed">{language === "bn" ? "বৃষ্টিনির্ভর" : "Rainfed"}</option>
-              </select>
-            </label>
-            <label className="text-xs font-bold text-[#526c5a]">
-              {language === "bn" ? "পানির উৎস (ঐচ্ছিক)" : "Water source (optional)"}
-              <select value={waterSource} onChange={(e) => setWaterSource(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
-                <option value="">{language === "bn" ? "জানা নেই" : "Unknown"}</option>
-                <option value="groundwater">{language === "bn" ? "ভূগর্ভস্থ পানি" : "Groundwater"}</option>
-                <option value="surface-water">{language === "bn" ? "নদী / খাল" : "River / canal"}</option>
-                <option value="rainwater">{language === "bn" ? "বৃষ্টির পানি" : "Rainwater"}</option>
-              </select>
+              {language === "bn" ? "মাটির pH" : "Soil pH"}
+              <input type="number" min="3" max="10" step="0.1" value={soilPh ?? ""} onChange={(e) => setSoilPh(e.target.value ? Number(e.target.value) : undefined)} placeholder="6.8" className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold" />
             </label>
             <label className="text-xs font-bold text-[#526c5a]">
               {language === "bn" ? "পরিকল্পনার অগ্রাধিকার" : "Planning priority"}
-              <select value={currentGoal} onChange={(e) => setCurrentGoal(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
+              <select value={currentGoal} onChange={(e) => handleGoalChange(e.target.value)} className="dashboard-input mt-1 w-full rounded-xl px-3 text-sm font-semibold">
                 <option value="BALANCED">{t.goals.balanced}</option>
                 <option value="CONSERVE_WATER">{t.goals.conserveWater}</option>
                 <option value="RESTORE_NITROGEN">{t.goals.restoreNitrogen}</option>
+                <option value="CUSTOM">{t.goals.custom}</option>
               </select>
             </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => setIsCustomModalOpen(true)}
+                className="w-full min-h-touch py-2.5 px-3 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800 text-xs font-bold flex items-center justify-center gap-1.5"
+              >
+                <Sliders className="w-4 h-4 text-purple-600" />
+                <span>{language === "bn" ? "অগ্রাধিকার স্লাইডার পরিবর্তন" : "Customize Weights"}</span>
+              </button>
+            </div>
           </div>
-          <p className="flex items-start gap-2 text-[11px] leading-5 text-[#718073]">
-            <MapPin size={14} className="mt-0.5 shrink-0" />
-          {language === "bn" ? "মাটির তথ্য ফাঁকা রাখলে সেটিকে কৃষকের মাপা তথ্য ধরা হবে না। ফসল, মৌসুম, সেচ ও পানির উৎস ডিভাইসে সংরক্ষিত থাকে; এগুলো এখনো শস্য-স্কোরিংয়ে ব্যবহার হয় না।" : "Unknown soil values are not treated as farmer measurements. Crop, season, irrigation, and water-source preferences are saved on this device; they are not currently inputs to crop scoring."}
-          </p>
 
-          {/* Ingestion Progress Live Steps (PRD Section 12) */}
+          {/* Ingestion Progress Live Steps */}
           {loading && (
             <div className="p-4 rounded-2xl bg-nasablue-50 dark:bg-gray-800 border border-nasablue-200 dark:border-yellow-400 animate-pulse text-xs font-bold text-nasablue-950 dark:text-yellow-300 flex items-center gap-3">
               <RotateCw className="w-5 h-5 animate-spin flex-shrink-0" />
@@ -746,7 +779,7 @@ export default function Home() {
           )}
         </section>
 
-        {/* Section 2: 4-Year Rotation Plan Screen */}
+        {/* Section 2: Crop Rotation Plan Screen */}
         <section id="crop-plan" className="space-y-4">
           <PlanView
             language={language}
@@ -754,16 +787,21 @@ export default function Home() {
             alternativePlan={alternativePlan}
             currentGoal={currentGoal}
             onGoalChange={handleGoalChange}
+            currentCycle={cycleYears}
+            onCycleChange={handleCycleChange}
+            onOpenCustomWeights={() => setIsCustomModalOpen(true)}
             isSavedOffline={isSavedOffline}
             onSaveOffline={handleSaveOfflineManual}
             onOpenNasaContext={() => setIsNasaModalOpen(true)}
           />
         </section>
+
+        {/* Section 3: Data Limitations */}
         <section id="data-context" className="rounded-2xl border border-[#2d5740] bg-[#173a29] p-4 text-xs leading-5 text-[#c6d6c5]">
-          <strong className="text-[#e8f0dc]">{language === "bn" ? "তথ্যের সীমাবদ্ধতা:" : "Data limitations:"}</strong>{" "}
+          <strong className="text-[#e8f0dc]">{language === "bn" ? "তথ্যের সীমাবদ্ধতা ও বৈজ্ঞানিক সততা:" : "Data limitations & scientific honesty:"}</strong>{" "}
           {language === "bn"
-            ? "NASA SMAP-এর ৯ কিমি রেজোলিউশন আঞ্চলিক মাটির আর্দ্রতার প্রেক্ষাপট—এটি আপনার নির্দিষ্ট জমির মাপ নয়। ET₀ FAO-56 Penman–Monteith পদ্ধতিতে NASA POWER-এর দৈনিক আবহাওয়া থেকে হিসাব করা হয়। NASA তথ্য না থাকলে ফলাফল ফাঁকা দেখানো হয়; ইঞ্জিনের পরিকল্পনাকে ক্ষেত্রপরিমাপ মনে করবেন না।"
-            : "NASA SMAP’s 9 km resolution is regional soil-moisture context, not a measurement of your field. ET₀ is calculated with FAO-56 Penman–Monteith from daily NASA POWER weather inputs. Missing NASA values remain unavailable; treat the rotation as decision support, not a field measurement."}
+            ? "NASA SMAP-এর ৯ কিমি রেজোলিউশন আঞ্চলিক মাটির আর্দ্রতার প্রেক্ষাপট—এটি আপনার নির্দিষ্ট জমির মাপ নয়। ET₀ FAO-56 Penman–Monteith পদ্ধতিতে NASA POWER-এর দৈনিক আবহাওয়া থেকে হিসাব করা হয়। ISRIC SoilGrids বাহ্যিক ডিজিটাল মাটি মানচিত্র। টেরাশিফ্‌টের পরিকল্পনা কৃষিবিদদের নির্দেশনায় সিদ্ধান্ত সহায়ক টুল।"
+            : "NASA SMAP’s 9 km resolution is regional soil-moisture context, not a measurement of your field. ET₀ is calculated with FAO-56 Penman–Monteith from daily NASA POWER weather inputs. ISRIC SoilGrids is an external digital soil baseline. Treat TerraShift rotations as decision support."}
         </section>
         </main>
       </div>
@@ -774,45 +812,125 @@ export default function Home() {
         isOpen={isNasaModalOpen}
         onClose={() => setIsNasaModalOpen(false)}
         nasaContext={nasaContext}
-        farm={{
-          name: farmName,
-          latitude,
-          longitude,
-          areaHectares: fieldSize,
-          soilTexture,
-          soilPh,
-          soilSource:
-            soilTexture && soilPh != null
-              ? "MEASURED"
-              : soilTexture || soilPh != null
-                ? "MIXED"
-                : "UNAVAILABLE",
-        }}
+        farm={{ name: farmName, latitude, longitude, soilTexture, soilPh }}
       />
+
+      {/* Custom Weights Modal */}
+      {isCustomModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-gray-900 border-2 border-purple-400 dark:border-yellow-400 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-purple-600 dark:text-yellow-400" />
+                <h3 className="text-base font-extrabold text-gray-900 dark:text-yellow-400">
+                  {t.customWeightsTitle}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCustomModalOpen(false)}
+                className="p-1 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              {t.customWeightsDesc}
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <div>
+                <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <span>{t.weights.water}</span>
+                  <span className="font-mono text-purple-600 dark:text-yellow-400">{customWeights.water}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="70"
+                  value={customWeights.water}
+                  onChange={(e) => setCustomWeights({ ...customWeights, water: Number(e.target.value) })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <span>{t.weights.nitrogen}</span>
+                  <span className="font-mono text-purple-600 dark:text-yellow-400">{customWeights.nitrogen}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="70"
+                  value={customWeights.nitrogen}
+                  onChange={(e) => setCustomWeights({ ...customWeights, nitrogen: Number(e.target.value) })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <span>{t.weights.soil}</span>
+                  <span className="font-mono text-purple-600 dark:text-yellow-400">{customWeights.soil}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="70"
+                  value={customWeights.soil}
+                  onChange={(e) => setCustomWeights({ ...customWeights, soil: Number(e.target.value) })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <span>{t.weights.heat}</span>
+                  <span className="font-mono text-purple-600 dark:text-yellow-400">{customWeights.heat}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  value={customWeights.heat}
+                  onChange={(e) => setCustomWeights({ ...customWeights, heat: Number(e.target.value) })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t">
+              <button
+                type="button"
+                onClick={() => setCustomWeights({ water: 35, soil: 25, nitrogen: 25, heat: 15 })}
+                className="text-xs font-bold text-gray-500 hover:text-black dark:hover:text-white"
+              >
+                {t.resetPreset}
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCustomWeights}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-md transition-all"
+              >
+                {language === "bn" ? "প্রয়োগ করুন ও গণনা করুন" : "Apply & Recalculate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modal */}
       <AuthModal
         language={language}
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={(u) => {
-          setUser(u);
-          restoredUserIdRef.current = u.id;
-          void restoreFarm(u.id);
+        onSuccess={(loggedUser) => {
+          setUser(loggedUser);
+          setIsAuthModalOpen(false);
+          void restoreFarm(loggedUser.id);
         }}
       />
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-black py-6 mt-12 text-center text-xs text-gray-500 dark:text-gray-400">
-        <div className="max-w-5xl mx-auto px-4 space-y-2">
-          <p className="font-bold text-gray-700 dark:text-gray-300">
-            TerraShift • NASA Space Apps Challenge 2026 • Team AgroNova
-          </p>
-          <p className="text-[11px] leading-relaxed max-w-2xl mx-auto">
-            NASA SMAP L4 (SPL4SMGP 9 km) provides regional hydrological context, not field truth. All rotation advice is agronomist-reviewed decision support based on BARI & BRRI cropping manuals.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

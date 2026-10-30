@@ -84,12 +84,13 @@ def fetch_isric_soilgrids(latitude: float, longitude: float, timeout_sec: int = 
         return {
             "source": "ISRIC_SOILGRIDS_REST",
             "soilSource": "ESTIMATED",
+            "provider": "ISRIC - World Soil Information, Wageningen, Netherlands (Non-NASA)",
             "soilPh": ph,
             "soilTexture": texture_class,
             "clayPercent": clay_pct,
             "sandPercent": sand_pct,
             "siltPercent": silt_pct,
-            "disclaimer": "SoilGrids baseline estimated from global digital soil mapping"
+            "disclaimer": "SoilGrids baseline estimated from global digital soil mapping; not a NASA dataset."
         }
     except Exception as error:
         return unavailable_soilgrids(

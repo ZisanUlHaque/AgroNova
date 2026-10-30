@@ -1,9 +1,8 @@
-import { Crop, SeasonSlot, NasaContext } from "./types.js";
+import { Crop, SeasonSlot } from "./types.js";
 
 export interface CandidateGenerationOptions {
   crops: Crop[];
   slots: SeasonSlot[];
-  context: NasaContext;
   maxCandidates?: number;
 }
 
@@ -67,24 +66,13 @@ function satisfiesAnnualLegumeRule(sequence: Crop[], slots: SeasonSlot[]): boole
  * Generates valid 12-season candidate sequences matching agronomic rotation rules.
  */
 export function generateCandidateSequences(options: CandidateGenerationOptions): Crop[][] {
-  const { crops, slots, context, maxCandidates = 50 } = options;
+  const { crops, slots, maxCandidates = 50 } = options;
 
   // Filter crops suitable for each slot's season
   const slotCandidates: Crop[][] = slots.map((slot) => {
     return crops.filter((crop) => {
       // Must be viable in this season
       if (!crop.seasons.includes(slot.season)) return false;
-
-      // Water stress check: if rootzone moisture is low (< 0.22 m3/m3) or drought indicated,
-      // restrict ultra-high water crops in dry season (Rabi)
-      const isDrySeason = slot.season === "Rabi";
-      const isWaterStressed = (context.smapRootzone != null && context.smapRootzone < 0.22) ||
-                              (context.powerTotalPrecip != null && context.powerTotalPrecip < 60);
-
-      if (isDrySeason && isWaterStressed && crop.waterDemand >= 5) {
-        // Exclude boro rice in extreme water stress scenario for candidates
-        return false;
-      }
 
       return true;
     });
@@ -150,4 +138,3 @@ export function generateCandidateSequences(options: CandidateGenerationOptions):
 
   return validSequences.slice(0, maxCandidates);
 }
-

@@ -190,7 +190,14 @@ export const api = {
     return res;
   },
 
-  async getRecommendation(farmId: string, targetGoal: string = "BALANCED", forceRefresh: boolean = false, isSimulatedOffline: boolean = false) {
+  async getRecommendation(
+    farmId: string,
+    targetGoal: string = "BALANCED",
+    forceRefresh: boolean = false,
+    isSimulatedOffline: boolean = false,
+    cycleYears: 3 | 4 = 3,
+    customWeights?: { water: number; soil: number; nitrogen: number; heat: number }
+  ) {
     if (isSimulatedOffline) {
       const saved = await offlineDb.getPlan(farmId);
       if (saved) {
@@ -218,7 +225,7 @@ export const api = {
 
     const res = await request("/recommendations", {
       method: "POST",
-      body: JSON.stringify({ farmId, targetGoal, forceRefresh }),
+      body: JSON.stringify({ farmId, targetGoal, forceRefresh, cycleYears, customWeights }),
     });
 
     if (res.ok && res.data.plan) {

@@ -1,6 +1,10 @@
 export type SeasonName = "Rabi" | "Kharif-1" | "Kharif-2";
 
-export type TargetGoal = "BALANCED" | "CONSERVE_WATER" | "RESTORE_NITROGEN";
+export type TargetGoal =
+  | "BALANCED"
+  | "CONSERVE_WATER"
+  | "RESTORE_NITROGEN"
+  | "CUSTOM";
 
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 
@@ -37,12 +41,13 @@ export interface Crop {
   icon: string;
   agronomicRoleEn: string;
   agronomicRoleBn: string;
+  typicalIrrigationMm?: number; // Estimated typical irrigation requirement in mm
 }
 
 export interface SeasonSlot {
   year: number;
   season: SeasonName;
-  index: number; // 0 to 11
+  index: number; // 0 to N-1
 }
 
 export interface NasaContext {
@@ -58,9 +63,12 @@ export interface NasaContext {
   smapFetchedAt?: string | null;
   et0Mean?: number | null; // mm/day
   etSource?: string | null;
+  landsatEtFraction?: number | null; // Landsat thermal evaporative fraction (ETa / ET0)
   soilTexture?: string | null;
   soilPh?: number | null;
-  soilSource?: "ESTIMATED" | "MEASURED" | "DEFAULT" | "PARTIAL";
+  soilSource?: "ESTIMATED" | "MEASURED" | "DEFAULT" | "PARTIAL" | "OFFLINE_AEZ";
+  aezCode?: string | null; // e.g. "AEZ-13: Deep Red-Brown & Deltaic Floodplain"
+  isOfflineAezBaseline?: boolean;
 }
 
 export interface ScoringWeights {
@@ -68,6 +76,38 @@ export interface ScoringWeights {
   soil: number;
   nitrogen: number;
   heat: number;
+}
+
+export interface QuantitativeMetrics {
+  waterUsageComparison: {
+    conventionalIrrigationMm: number;
+    recommendedIrrigationMm: number;
+    reductionPercent: number;
+    waterSavedM3PerHa: number;
+    pumpingCostSavedBdtPerHa: { min: number; max: number };
+  };
+  nitrogenMetrics: {
+    biologicalNFixedKgHaPerYear: { min: number; max: number };
+    syntheticUreaSavedKgHaPerYear: { min: number; max: number };
+    fertilizerCostSavedBdtPerHa: { min: number; max: number };
+  };
+  soilOrganicMatterMetrics: {
+    annualSomAccretionPercent: { min: number; max: number };
+    biomassResidueTonHaPerYear: { min: number; max: number };
+  };
+  pestDisruptionScore: {
+    pestVulnerabilityReductionPercent: number;
+    monocultureBreakCount: number;
+    biofumigationPresent: boolean;
+  };
+  tradeOffs: {
+    summaryEn: string;
+    summaryBn: string;
+    caloricTradeOffEn: string;
+    caloricTradeOffBn: string;
+    economicReturnEn: string;
+    economicReturnBn: string;
+  };
 }
 
 export interface PlanSeasonItem {
@@ -100,6 +140,7 @@ export interface PlanSeasonItem {
 export interface RotationPlan {
   planId: string;
   targetGoal: TargetGoal;
+  cycleYears: number; // 3 or 4 years
   confidence: ConfidenceLevel;
   confidenceReasonEn: string;
   confidenceReasonBn: string;
@@ -108,6 +149,8 @@ export interface RotationPlan {
   waterSavingsRange: string;
   nitrogenGainRange: string;
   engineVersion: string;
+  quantitativeMetrics: QuantitativeMetrics;
+  weightsUsed: ScoringWeights;
   inputsUsed: {
     meanTemp?: number | null;
     totalPrecip?: number | null;
@@ -116,6 +159,7 @@ export interface RotationPlan {
     soilTexture?: string | null;
     soilPh?: number | null;
     soilSource: string;
+    aezCode?: string | null;
     nasaFreshness: {
       powerFresh: boolean;
       smapFresh: boolean;
