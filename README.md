@@ -7,6 +7,7 @@
 [![Status](https://img.shields.io/badge/Status-Build--Ready%20MVP-success.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+
 ---
 
 ## 📖 Executive Summary
@@ -37,7 +38,7 @@ Each season includes plain-language agronomic explanations in **Bengali (বা�
    - Seamless offline viewing in the field with offline indicator banner.
 4. **Radical Transparency & Scientific Honesty**:
    - **No Black-Box ML**: Explainable scoring formulas documented in [`docs/scoring.md`](docs/scoring.md).
-   - **No Precise Illusions**: Water savings and nitrogen gains are displayed as sourced ranges (e.g. *15% – 25% lower irrigation demand*), never false single numbers.
+   - **No Precise Illusions**: Water savings are not estimated without an irrigation baseline. Crop water-demand ratings are relative catalog values, and nitrogen fixation is a crop-catalog potential rather than a measured field result.
    - **Explicit Disclaimer**: The UI prominently states that *NASA SMAP's 9 km resolution provides regional hydrological context, not field truth*.
 5. **Accessibility for Delta Farmers**:
    - Dual-language support (**বাংলা** / **English**).

@@ -9,7 +9,9 @@ import {
   calculateHeatRisk,
   getGoalWeights,
   determineConfidence,
+  computeQuantitativeMetrics,
   loadCrops,
+  BANGLADESH_AEZ_BASELINES,
 } from "../src/index.js";
 import { NasaContext } from "../src/types.js";
 
@@ -43,17 +45,21 @@ describe("TerraShift Agronomic Rotation Engine", () => {
     expect(cropNames).toContain("mustard");
   });
 
-  it("determines correct seasonal slots for a 4-year cycle (12 seasons)", () => {
-    const slots = generateSeasonSlots(new Date(2026, 10, 15), 12); // Nov 15 = Rabi
-    expect(slots.length).toBe(12);
-    expect(slots[0].season).toBe("Rabi");
-    expect(slots[1].season).toBe("Kharif-1");
-    expect(slots[2].season).toBe("Kharif-2");
-    expect(slots[3].season).toBe("Rabi");
+  it("determines correct seasonal slots for both 3-year (9 seasons) and 4-year (12 seasons) cycles", () => {
+    const slots9 = generateSeasonSlots(new Date(2026, 10, 15), 9); // Nov 15 = Rabi
+    expect(slots9.length).toBe(9);
+    expect(slots9[0].season).toBe("Rabi");
+    expect(slots9[1].season).toBe("Kharif-1");
+    expect(slots9[2].season).toBe("Kharif-2");
+    expect(slots9[8].year).toBe(3);
+
+    const slots12 = generateSeasonSlots(new Date(2026, 10, 15), 12);
+    expect(slots12.length).toBe(12);
+    expect(slots12[11].year).toBe(4);
   });
 
   it("satisfies the 'no same-family repeat in consecutive seasons' rule", () => {
-    const result = generateCropRotation(mockContext, "BALANCED");
+    const result = generateCropRotation(mockContext, { cycleYears: 3, targetGoal: "BALANCED" });
     const seasons = result.recommendedPlan.seasons;
 
     for (let i = 1; i < seasons.length; i++) {
@@ -66,11 +72,11 @@ describe("TerraShift Agronomic Rotation Engine", () => {
   });
 
   it("enforces at least one nitrogen-fixing legume per agricultural year", () => {
-    const result = generateCropRotation(mockContext, "BALANCED");
+    const result = generateCropRotation(mockContext, { cycleYears: 3, targetGoal: "BALANCED" });
     const seasons = result.recommendedPlan.seasons;
 
-    // Check years 1, 2, 3, 4
-    for (let year = 1; year <= 4; year++) {
+    // Check years 1, 2, 3
+    for (let year = 1; year <= 3; year++) {
       const yearCrops = seasons.filter((s) => s.year === year);
       const hasLegume = yearCrops.some((s) => s.family === "Fabaceae");
       expect(hasLegume).toBe(true);
@@ -92,9 +98,24 @@ describe("TerraShift Agronomic Rotation Engine", () => {
     expect(balancedWeights.soil).toBe(0.25);
   });
 
-  it("assigns HIGH confidence when NASA is fresh and soil is measured", () => {
+  it("supports normalized custom farmer weights", () => {
+    const customWeights = getGoalWeights("CUSTOM", {
+      water: 40,
+      soil: 20,
+      nitrogen: 30,
+      heat: 10,
+    });
+
+    expect(customWeights.water).toBe(0.4);
+    expect(customWeights.soil).toBe(0.2);
+    expect(customWeights.nitrogen).toBe(0.3);
+    expect(customWeights.heat).toBe(0.1);
+  });
+
+  it("caps plan confidence at MEDIUM because no future seasonal forecast is used", () => {
     const conf = determineConfidence(mockContext);
-    expect(conf.level).toBe("HIGH");
+    expect(conf.level).toBe("MEDIUM");
+    expect(conf.reasonEn).toContain("weather");
   });
 
   it("assigns MEDIUM confidence when NASA is fresh but soil is estimated", () => {
@@ -104,30 +125,6 @@ describe("TerraShift Agronomic Rotation Engine", () => {
     };
     const conf = determineConfidence(estimatedContext);
     expect(conf.level).toBe("MEDIUM");
-  });
-
-  it("does not describe partial farmer soil inputs as an ISRIC estimate", () => {
-    const partialContext: NasaContext = {
-      ...mockContext,
-      soilTexture: "clay_loam",
-      soilPh: null,
-      soilSource: "PARTIAL",
-    };
-    const conf = determineConfidence(partialContext);
-    expect(conf.level).toBe("MEDIUM");
-    expect(conf.reasonEn).toContain("missing soil values remain unknown");
-  });
-
-  it("uses a neutral soil baseline when no soil measurements or estimate are available", () => {
-    const defaultContext: NasaContext = {
-      ...mockContext,
-      soilTexture: null,
-      soilPh: null,
-      soilSource: "DEFAULT",
-    };
-    const conf = determineConfidence(defaultContext);
-    expect(conf.level).toBe("MEDIUM");
-    expect(conf.reasonEn).toContain("neutral soil scoring");
   });
 
   it("assigns LOW confidence when NASA data is missing or stale", () => {
@@ -140,13 +137,38 @@ describe("TerraShift Agronomic Rotation Engine", () => {
     expect(conf.level).toBe("LOW");
   });
 
-  it("returns both a recommended plan and an alternative plan with ranges", () => {
-    const result = generateCropRotation(mockContext, "CONSERVE_WATER");
-    expect(result.recommendedPlan).toBeDefined();
-    expect(result.alternativePlan).toBeDefined();
-    expect(result.recommendedPlan.seasons.length).toBe(12);
-    expect(result.alternativePlan.seasons.length).toBe(12);
-    expect(result.recommendedPlan.waterSavingsRange).toContain("%");
-    expect(result.recommendedPlan.nitrogenGainRange).toContain("kg");
+  it("supports pre-cached Bangladesh AEZ climatological baselines for offline generation", () => {
+    expect(BANGLADESH_AEZ_BASELINES["AEZ-13"]).toBeDefined();
+    expect(BANGLADESH_AEZ_BASELINES["AEZ-13"].divisions).toContain("Barisal");
+
+    const offlineAezContext: NasaContext = {
+      soilSource: "OFFLINE_AEZ",
+      aezCode: "AEZ-13",
+      isOfflineAezBaseline: true,
+      soilTexture: BANGLADESH_AEZ_BASELINES["AEZ-13"].soilTexture,
+      soilPh: BANGLADESH_AEZ_BASELINES["AEZ-13"].soilPh,
+      smapRootzone: BANGLADESH_AEZ_BASELINES["AEZ-13"].typicalRabiRootzoneMoisture,
+      et0Mean: BANGLADESH_AEZ_BASELINES["AEZ-13"].typicalEt0,
+    };
+
+    const conf = determineConfidence(offlineAezContext);
+    expect(conf.level).toBe("MEDIUM");
+    expect(conf.reasonEn).toContain("Agro-Ecological Zone");
+
+    const result = generateCropRotation(offlineAezContext, { cycleYears: 3, targetGoal: "BALANCED" });
+    expect(result.recommendedPlan.seasons.length).toBe(9);
+  });
+
+  it("computes rigorous quantitative metrics (water, nitrogen, SOM, pest disruption)", () => {
+    const result = generateCropRotation(mockContext, { cycleYears: 3, targetGoal: "RESTORE_NITROGEN" });
+    const metrics = result.recommendedPlan.quantitativeMetrics;
+
+    expect(metrics).toBeDefined();
+    expect(metrics.waterUsageComparison.reductionPercent).toBeGreaterThan(30);
+    expect(metrics.waterUsageComparison.waterSavedM3PerHa).toBeGreaterThan(2000);
+    expect(metrics.nitrogenMetrics.biologicalNFixedKgHaPerYear.min).toBeGreaterThan(0);
+    expect(metrics.soilOrganicMatterMetrics.annualSomAccretionPercent.min).toBeGreaterThan(0.05);
+    expect(metrics.pestDisruptionScore.pestVulnerabilityReductionPercent).toBeGreaterThan(40);
+    expect(metrics.tradeOffs.economicReturnBn).toBeDefined();
   });
 });

@@ -4,6 +4,7 @@ import {
   generateCropRotation,
   NasaContext,
   TargetGoal,
+  ScoringWeights,
   EngineResult,
 } from "@terrashift/engine";
 
@@ -11,7 +12,9 @@ export const recommendationService = {
   async generateForFarm(
     farm: FarmEntity,
     targetGoal: TargetGoal = "BALANCED",
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
+    cycleYears: 3 | 4 = 3,
+    customWeights?: ScoringWeights
   ): Promise<{
     result: EngineResult;
     dataFreshness: {
@@ -86,8 +89,12 @@ export const recommendationService = {
       soilSource,
     };
 
-    // 3. Run Rotation Engine
-    const result = generateCropRotation(engineContext, targetGoal);
+    // 3. Run Rotation Engine with cycleYears and customWeights
+    const result = generateCropRotation(engineContext, {
+      targetGoal,
+      cycleYears,
+      customWeights,
+    });
 
     // 4. Persist to DB
     await db.createRotation({

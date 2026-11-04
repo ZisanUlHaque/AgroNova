@@ -8,6 +8,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 5,
     "heatTolerance": 35,
+    "typicalIrrigationMm": 1200,
     "soilPreference": {
       "textures": ["clay", "clay_loam", "silty_clay", "loam"],
       "minPh": 5.5,
@@ -36,6 +37,7 @@
     "seasons": ["Kharif-1"],
     "waterDemand": 3,
     "heatTolerance": 36,
+    "typicalIrrigationMm": 300,
     "soilPreference": {
       "textures": ["clay_loam", "loam", "sandy_loam"],
       "minPh": 5.5,
@@ -64,6 +66,7 @@
     "seasons": ["Kharif-2"],
     "waterDemand": 4,
     "heatTolerance": 36,
+    "typicalIrrigationMm": 100,
     "soilPreference": {
       "textures": ["clay", "clay_loam", "silty_clay", "loam"],
       "minPh": 5.0,
@@ -92,6 +95,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 2,
     "heatTolerance": 30,
+    "typicalIrrigationMm": 280,
     "soilPreference": {
       "textures": ["loam", "clay_loam", "sandy_loam"],
       "minPh": 6.0,
@@ -120,6 +124,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 2,
     "heatTolerance": 32,
+    "typicalIrrigationMm": 180,
     "soilPreference": {
       "textures": ["loam", "sandy_loam", "clay_loam"],
       "minPh": 5.8,
@@ -136,7 +141,7 @@
       "maxConsecutiveSeasons": 1
     },
     "icon": "flower",
-    "agronomicRoleEn": "Short-duration winter oilseed, breaks cereal pest and pathogen cycles.",
+    "agronomicRoleEn": "Short-duration winter oilseed, breaks cereal pest and pathogen cycles via biofumigation.",
     "agronomicRoleBn": "স্বল্পমেয়াদী তেলবীজ, ফসলের পোকা ও রোগের চক্র ভেঙে মাটির উর্বরতা বাড়ায়।"
   },
   {
@@ -148,6 +153,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 2,
     "heatTolerance": 32,
+    "typicalIrrigationMm": 150,
     "soilPreference": {
       "textures": ["loam", "clay_loam", "silty_clay"],
       "minPh": 6.0,
@@ -176,6 +182,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 1,
     "heatTolerance": 33,
+    "typicalIrrigationMm": 120,
     "soilPreference": {
       "textures": ["clay_loam", "loam", "silty_clay"],
       "minPh": 6.2,
@@ -204,6 +211,7 @@
     "seasons": ["Kharif-1", "Kharif-2"],
     "waterDemand": 2,
     "heatTolerance": 38,
+    "typicalIrrigationMm": 180,
     "soilPreference": {
       "textures": ["sandy_loam", "loam", "clay_loam"],
       "minPh": 6.0,
@@ -232,6 +240,7 @@
     "seasons": ["Kharif-1"],
     "waterDemand": 3,
     "heatTolerance": 38,
+    "typicalIrrigationMm": 250,
     "soilPreference": {
       "textures": ["alluvial_loam", "loam", "clay_loam", "sandy_loam"],
       "minPh": 5.5,
@@ -260,6 +269,7 @@
     "seasons": ["Rabi", "Kharif-1"],
     "waterDemand": 3,
     "heatTolerance": 36,
+    "typicalIrrigationMm": 450,
     "soilPreference": {
       "textures": ["loam", "sandy_loam", "clay_loam"],
       "minPh": 5.8,
@@ -288,6 +298,7 @@
     "seasons": ["Rabi"],
     "waterDemand": 3,
     "heatTolerance": 30,
+    "typicalIrrigationMm": 350,
     "soilPreference": {
       "textures": ["sandy_loam", "loam"],
       "minPh": 5.2,
