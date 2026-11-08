@@ -11,7 +11,6 @@ To ensure consistent subtitles, voiceover pronunciation, and brand recognition a
 - **Project Name**: **TerraShift**
 - **Bangla Spelling**: **টেরাশিফ্‌ট**
 - **Team Name**: **AgroNova** (টিম অ্যাগ্রোনোভা)
-- **International Phonetic Alphabet (IPA)**: `/ˈtɛr.ə.ʃɪft/`
 - **Phonetic Pronunciation**: *"TER-uh-shift"* (NOT *"Terash Shift"*, *"Data Shift"*, or *"Parachute"*).
 - **Tagline**:
   - *English*: *"Adapting Smallholder Delta Farms with NASA Earth Observations"*

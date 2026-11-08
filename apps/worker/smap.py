@@ -5,8 +5,6 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import numpy as np
-
 
 def unavailable_smap(warning: str) -> Dict[str, Any]:
     return {
@@ -29,6 +27,7 @@ def extract_nearest_smap_cell(
     granule_metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     import h5py
+    import numpy as np
 
     with h5py.File(granule_path, "r") as granule:
         required_paths = (
@@ -105,51 +104,90 @@ def fetch_smap_soil_moisture(
     longitude: float,
     username: Optional[str] = None,
     password: Optional[str] = None,
+    timeout_sec: int = 15,
 ) -> Dict[str, Any]:
-    user = username if username is not None else os.environ.get("EARTHDATA_USERNAME")
-    password_value = password if password is not None else os.environ.get("EARTHDATA_PASSWORD")
-    if not user or not password_value:
+    user = username or os.environ.get("EARTHDATA_USERNAME")
+    pwd = password or os.environ.get("EARTHDATA_PASSWORD")
+    if not user or not pwd:
         return unavailable_smap(
-            "NASA Earthdata credentials are not configured; SMAP values were not fabricated."
+            "NASA Earthdata credentials were not provided; live SMAP observations were not fetched and are not fabricated."
         )
+
+    import requests
+
+    search_endpoint = "https://cmr.earthdata.nasa.gov/search/granules.json"
+    end_date = datetime.date.today() - datetime.timedelta(days=3)
+    start_date = end_date - datetime.timedelta(days=7)
+    params = {
+        "short_name": "SPL4SMGP",
+        "temporal": f"{start_date.isoformat()}T00:00:00Z,{end_date.isoformat()}T23:59:59Z",
+        "point": f"{longitude:.4f},{latitude:.4f}",
+        "page_size": 1,
+        "sort_key": "-start_date",
+    }
+    headers = {"Client-Id": "terrashift-nasa-spaceapps-2026"}
 
     try:
-        import earthaccess
-
-        auth = earthaccess.login(strategy="environment")
-        if not auth.authenticated:
-            return unavailable_smap("NASA Earthdata authentication was not accepted.")
-
-        today = datetime.date.today()
-        granules = earthaccess.search_data(
-            short_name="SPL4SMGP",
-            point=(longitude, latitude),
-            temporal=(
-                (today - datetime.timedelta(days=14)).isoformat(),
-                today.isoformat(),
-            ),
-            count=1,
-            sort_key="-start_date",
+        search_res = requests.get(
+            search_endpoint,
+            params=params,
+            headers=headers,
+            timeout=timeout_sec,
         )
-        if not granules:
-            return unavailable_smap("No recent SPL4SMGP granules were found for this location.")
-
-        metadata = granules[0].get("meta", {})
-        with tempfile.TemporaryDirectory(prefix="terrashift-smap-") as download_dir:
-            downloaded = earthaccess.download(
-                granules[:1],
-                local_path=download_dir,
-                show_progress=False,
+        search_res.raise_for_status()
+        entries = search_res.json().get("feed", {}).get("entry", [])
+        if not entries:
+            return unavailable_smap(
+                "No recent SMAP L4 granule was found covering these coordinates; no fallback moisture was substituted."
             )
-            if not downloaded:
-                return unavailable_smap("Earthdata found a granule but did not return a downloaded file.")
+
+        granule = entries[0]
+        download_url = None
+        for link in granule.get("links", []):
+            href = link.get("href", "")
+            if href.endswith(".h5") and "data#" in link.get("rel", ""):
+                download_url = href
+                break
+        if not download_url:
+            for link in granule.get("links", []):
+                href = link.get("href", "")
+                if href.endswith(".h5"):
+                    download_url = href
+                    break
+
+        if not download_url:
+            return unavailable_smap(
+                "A SMAP L4 granule was indexed but had no downloadable HDF5 asset; no fallback moisture was substituted."
+            )
+
+        with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        try:
+            with requests.Session() as session:
+                session.auth = (user, pwd)
+                download_res = session.get(
+                    download_url,
+                    headers=headers,
+                    stream=True,
+                    timeout=max(timeout_sec, 30),
+                )
+                download_res.raise_for_status()
+                with open(temp_path, "wb") as file_handle:
+                    for chunk in download_res.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            file_handle.write(chunk)
+
             return extract_nearest_smap_cell(
-                str(downloaded[0]),
+                temp_path,
                 latitude,
                 longitude,
-                metadata,
+                granule_metadata=granule,
             )
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
     except Exception as error:
         return unavailable_smap(
-            f"Live SMAP retrieval failed ({type(error).__name__}); no demo values were substituted."
+            f"SMAP L4 ingestion failed ({type(error).__name__}); live rootzone observations remain unavailable and are not fabricated."
         )

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Language, translations } from "../lib/translations";
-import { Globe, Moon, Sun, Wifi, WifiOff, LogOut, Sprout } from "lucide-react";
+import { Moon, Sun, Wifi, WifiOff, Sprout, Satellite, User, LogOut, Radio } from "lucide-react";
 import Link from "next/link";
 
 interface HeaderProps {
@@ -35,100 +35,120 @@ export function Header({
   const t = translations[language];
 
   return (
-    <header className="border-b bg-white dark:bg-black dark:border-yellow-400 sticky top-0 z-40 shadow-sm transition-colors">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-<Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-  <div className="w-10 h-10 rounded-xl bg-agrogreen-600 dark:bg-yellow-400 flex items-center justify-center text-white dark:text-black shadow">
-    <Sprout className="w-6 h-6" />
-  </div>
-  <div>
-    <div className="flex items-center gap-2">
-      <span className="font-extrabold text-xl tracking-tight text-agrogreen-800 dark:text-yellow-400">
-        {t.appName}
-      </span>
-      <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-nasablue-500/10 text-nasablue-600 dark:bg-yellow-400/20 dark:text-yellow-300">
-        NASA Data
-      </span>
-    </div>
-    <p className="text-xs text-gray-500 dark:text-gray-300 hidden sm:block">
-      {t.tagline}
-    </p>
-  </div>
-</Link>
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md transition-colors shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        {/* Brand Logo & Mission Badge */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform">
+            <Sprout className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">
+                {t.appName}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-nasablue-500/10 text-nasablue-600 dark:bg-nasablue-500/20 dark:text-nasablue-300 border border-nasablue-500/20">
+                NASA DATA
+              </span>
+            </div>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:block leading-none mt-0.5">
+              {t.tagline}
+            </p>
+          </div>
+        </Link>
 
-        {/* Accessibility & Mode Controls */}
-        <div className="flex items-center flex-wrap gap-2">
-          {/* Airplane Mode Simulator */}
+        {/* Live Satellite Feed Pill (Center/Right) */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <Satellite className="w-3.5 h-3.5 text-nasablue-500" />
+          <span>{language === "bn" ? "লাইভ নাসা উপাত্ত: SMAP L4 · Landsat 9 · POWER" : "Live NASA EO: SMAP L4 · Landsat 9 · POWER"}</span>
+        </div>
+
+        {/* Controls: Language, Mode, Font, Auth */}
+        <div className="flex items-center gap-2">
+          {/* Offline Mode Toggle Pill */}
           <button
             onClick={onSimulatedOfflineToggle}
-            className={`min-h-touch px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${
               isSimulatedOffline
-                ? "bg-amber-500 text-white border-amber-600 animate-pulse"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700"
+                ? "bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700"
             }`}
-            title="Toggle offline airplane simulation"
+            title="Toggle simulated offline mode"
           >
             {isSimulatedOffline ? (
               <>
-                <WifiOff className="w-4 h-4" />
-                <span>{t.simulateOffline} (ON)</span>
+                <WifiOff className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t.simulateOffline}</span>
               </>
             ) : (
               <>
-                <Wifi className="w-4 h-4 text-agrogreen-600" />
-                <span>{t.onlineMode}</span>
+                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">{t.onlineMode}</span>
               </>
             )}
           </button>
 
-          <button
-            onClick={onThemeToggle}
-            className="min-h-touch px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 border bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700"
-            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-
-          {/* Font Scaling */}
-          <div className="flex items-center rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-800">
+          {/* Language Switcher Segmented Control */}
+          <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <button
-              onClick={() => onFontScaleChange(1.0)}
-              className={`min-h-touch px-2.5 text-xs font-bold ${
-                fontScale === 1.0 ? "bg-agrogreen-600 text-white dark:bg-yellow-400 dark:text-black" : "text-gray-600 dark:text-gray-300"
+              onClick={() => onLanguageChange("bn")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                language === "bn"
+                  ? "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              A
+              বাংলা
             </button>
             <button
-              onClick={() => onFontScaleChange(1.15)}
-              className={`min-h-touch px-2.5 text-sm font-bold ${
-                fontScale === 1.15 ? "bg-agrogreen-600 text-white dark:bg-yellow-400 dark:text-black" : "text-gray-600 dark:text-gray-300"
+              onClick={() => onLanguageChange("en")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                language === "en"
+                  ? "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              A+
+              EN
             </button>
           </div>
 
-          {/* Language Toggle */}
+          {/* Theme Toggle Button */}
           <button
-            onClick={() => onLanguageChange(language === "bn" ? "en" : "bn")}
-            className="min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-yellow-300 border border-gray-300 dark:border-gray-700 flex items-center gap-1.5"
+            onClick={onThemeToggle}
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200/80 dark:border-slate-700"
+            title={isDarkMode ? "Light mode" : "Dark mode"}
+            aria-label="Toggle theme"
           >
-            <Globe className="w-4 h-4" />
-            <span>{language === "bn" ? "English" : "বাংলা"}</span>
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
           </button>
 
-          {/* User / Auth */}
+          {/* Font Scaling Toggle */}
+          <button
+            onClick={() => onFontScaleChange(fontScale === 1.0 ? 1.15 : 1.0)}
+            className={`px-2 py-1 rounded-xl text-xs font-extrabold border transition-all ${
+              fontScale > 1.0
+                ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300"
+                : "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+            }`}
+            title="Toggle larger farmer-friendly font size"
+          >
+            A+
+          </button>
+
+          {/* Auth Button */}
           {user ? (
-            <div className="flex items-center gap-2 pl-1">
-              <span className="text-xs font-bold text-gray-700 dark:text-yellow-300 hidden lg:inline">
-                {user.fullName}
+            <div className="flex items-center gap-1.5 pl-1">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 hidden md:inline truncate max-w-[120px]">
+                {user.name || user.phone}
               </span>
               <button
                 onClick={onLogout}
-                className="min-h-touch p-2 rounded-lg text-gray-500 hover:text-red-600 dark:text-gray-300"
-                title={t.logout}
+                className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                title="Log out"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -136,9 +156,10 @@ export function Header({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="min-h-touch px-3 py-1.5 rounded-lg text-xs font-bold bg-agrogreen-600 hover:bg-agrogreen-700 text-white dark:bg-yellow-400 dark:text-black"
+              className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-extrabold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-sm"
             >
-              {t.login}
+              <User className="w-3.5 h-3.5" />
+              <span>{language === "bn" ? "লগইন" : "Login"}</span>
             </button>
           )}
         </div>

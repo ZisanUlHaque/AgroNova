@@ -1,181 +1,156 @@
+"use client";
+
 import Link from "next/link";
-import {
-  ArrowRight,
-  CloudSun,
-  Droplets,
-  Leaf,
-  MapPinned,
-  Satellite,
-  ShieldCheck,
-  Sprout,
-} from "lucide-react";
+import { useState } from "react";
+import { Anek_Bangla, Hind_Siliguri } from "next/font/google";
+import { ArrowRight, Play, Languages, Sprout, WifiOff, Satellite, Droplets, SlidersHorizontal, MapPin, ShieldCheck, Menu, X } from "lucide-react";
 
-const highlights = [
-  {
-    icon: Satellite,
-    title: "Satellite context, made useful",
-    description:
-      "NASA climate and soil-moisture observations become practical context for your next season.",
-  },
-  {
-    icon: Sprout,
-    title: "A rotation built for your land",
-    description:
-      "Explore a four-year crop sequence designed around Bangladesh’s three growing seasons.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Clear about what we know",
-    description:
-      "See sources, confidence, and honest ranges. Regional satellite data is never presented as field truth.",
-  },
-];
+const display = Anek_Bangla({ subsets: ["bengali", "latin"], weight: ["600", "800"], display: "swap" });
+const body = Hind_Siliguri({ subsets: ["bengali", "latin"], weight: ["400", "500", "700"], display: "swap" });
 
-export default function LandingPage() {
+const BG = "https://images.unsplash.com/photo-1560321941-84a23c5fce8c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDA%3D";
+const SHOT = "/dashboard.png";
+
+const NASA = ["SMAP L4", "Landsat 9", "MODIS", "NASA POWER"];
+const OTHER = ["ISRIC SoilGrids", "BARI", "BRRI", "SRDI"];
+
+export default function Hero() {
+  const [lang, setLang] = useState<"bn" | "en">("bn");
+  const [open, setOpen] = useState(false);
+  const nudge = lang === "bn" ? "pt-[3px]" : ""; // Bangla glyphs sit high; this re-centres them
+  const tr = (bn: string, en: string) => (lang === "bn" ? bn : en);
+  const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E3F27A]";
+
   return (
-    <main className="landing-page min-h-screen overflow-hidden bg-[#f5f4ec] text-[#183a2b]">
-      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-        <Link href="/" className="flex items-center gap-3" aria-label="TerraShift home">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1c5039] text-[#d8ee9b] shadow-lg shadow-[#183a2b]/15">
-            <Sprout size={24} />
-          </span>
-          <span>
-            <span className="block text-xl font-extrabold tracking-tight">TerraShift</span>
-            <span className="block text-[10px] font-bold uppercase tracking-[0.22em] text-[#66816e]">
-              Farming with foresight
-            </span>
-          </span>
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-[#557160] md:flex">
-          <a href="#approach" className="transition hover:text-[#1c5039]">Our approach</a>
-          <a href="#science" className="transition hover:text-[#1c5039]">The science</a>
-        </nav>
-        <Link
-          href="/dashboard"
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#1c5039] px-5 text-sm font-bold text-white shadow-lg shadow-[#1c5039]/15 transition hover:-translate-y-0.5 hover:bg-[#133c2b]"
-        >
-          Open dashboard <ArrowRight size={16} />
-        </Link>
-      </header>
+    <main lang={lang} className={`${body.className} relative overflow-hidden bg-[#0B2A24] text-white`}>
+      <style>{`
+        @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+        @keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        .rise{animation:rise .9s cubic-bezier(.2,.8,.2,1) backwards}
+        .drift{animation:drift 6s ease-in-out infinite}
+        @media (prefers-reduced-motion:reduce){.rise,.drift{animation:none}}
+      `}</style>
 
-      <section className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-8 sm:px-8 md:pt-10 lg:grid-cols-[1.02fr_.98fr] lg:px-12 lg:pb-28">
-        <div className="relative z-[1]">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#cad9bd] bg-white/70 px-3.5 py-2 text-xs font-bold text-[#38684b]">
-            <span className="h-2 w-2 rounded-full bg-[#75a950]" />
-            Climate-smart planning for delta farms
-          </div>
-          <h1 className="max-w-2xl text-[clamp(3.2rem,7vw,6.25rem)] font-semibold leading-[.98] tracking-[-.065em] text-[#183a2b]">
-            Grow with the
-            <span className="block font-serif font-medium italic text-[#6d8d52]">seasons, not</span>
-            against them.
-          </h1>
-          <p className="mt-7 max-w-xl text-base leading-7 text-[#607667] sm:text-lg sm:leading-8">
-            A clearer way for Bangladesh’s smallholder farmers to plan what comes
-            next—grounded in NASA Earth observations, local crop knowledge, and
-            the realities of your own field.
-          </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/dashboard"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-[#1c5039] px-7 text-sm font-bold text-white shadow-xl shadow-[#1c5039]/20 transition hover:-translate-y-0.5 hover:bg-[#133c2b]"
-            >
-              Explore your farm <ArrowRight size={17} />
+      {/* Background photo and legibility layers */}
+      <img src={BG} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(7,36,31,.55) 0%,rgba(7,36,31,.72) 45%,rgba(11,42,36,.96) 100%)" }} />
+
+      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+        {/* Navbar */}
+        <header className="rise sticky top-4 z-50 mx-auto mt-5 max-w-6xl">
+          <div className="flex items-center justify-between gap-3 rounded-full border border-white/70 bg-white py-2 pl-2.5 pr-2 text-[#0B2A24] shadow-[0_12px_40px_-12px_rgba(0,0,0,.55)]">
+            <Link href="/" aria-label="TerraShift" className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0B2A24] text-[#E3F27A]"><Sprout size={22} aria-hidden /></span>
+              <span className="flex items-center gap-2">
+                <span className={`${display.className} ${nudge} text-xl font-extrabold leading-none`}>{tr("টেরাশিফ্‌ট", "TerraShift")}</span>
+                <span className="hidden rounded-md bg-[#E3F27A] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide sm:inline">NASA DATA</span>
+              </span>
             </Link>
-            <a
-              href="#approach"
-              className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#cdd8c8] bg-white/55 px-7 text-sm font-bold text-[#335841] transition hover:bg-white"
-            >
-              See how it works
-            </a>
-          </div>
-          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-semibold text-[#6e8373]">
-            <span className="inline-flex items-center gap-2"><MapPinned size={15} /> Built for delta farms</span>
-            <span className="inline-flex items-center gap-2"><Droplets size={15} /> Water-aware planning</span>
-            <span className="inline-flex items-center gap-2"><Leaf size={15} /> Designed to work offline</span>
-          </div>
-        </div>
 
-        <div className="relative mx-auto w-full max-w-[590px]">
-          <div className="field-art absolute -inset-8 rounded-[3rem] opacity-70 blur-2xl" aria-hidden="true" />
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-[#183d2d] p-3 shadow-[0_35px_100px_-35px_rgba(24,58,43,.55)] sm:p-4">
-            <div className="field-landscape relative min-h-[430px] overflow-hidden rounded-[1.45rem] p-5 sm:min-h-[490px] sm:p-7">
-              <div className="absolute inset-0 bg-gradient-to-b from-[#183b2e]/60 via-transparent to-[#142f25]/75" />
-              <div className="relative flex items-center justify-between text-white">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 backdrop-blur"><Sprout size={17} /></span>
-                  <span className="text-xs font-extrabold tracking-wide">TERRASHIFT</span>
-                </div>
-                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-semibold backdrop-blur">FIELD OVERVIEW</span>
-              </div>
+            <nav aria-label="Primary" className="hidden items-center gap-1 rounded-full bg-[#F0F4EE] p-1 md:flex">
+              {([["#product", tr("প্রোডাক্ট", "Product")], ["#data", tr("ডেটা উৎস", "Data sources")], ["/dashboard", tr("ড্যাশবোর্ড", "Dashboard")], ["/dashboard?preset=barind", tr("ডেমো", "Demo")]] as const).map(([href, label], i) => (
+                <a key={href} href={href} className={`inline-flex h-10 items-center rounded-full px-4 text-sm font-bold transition ${i === 0 ? "bg-white shadow-sm" : "text-[#35524A] hover:bg-white/70"} ${focus}`}>
+                  <span className={nudge}>{label}</span>
+                </a>
+              ))}
+            </nav>
 
-              <div className="absolute left-5 right-5 top-[88px] rounded-2xl border border-white/25 bg-[#153b2d]/70 p-4 text-white shadow-lg backdrop-blur-xl sm:left-7 sm:right-7 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#d3e9a0]">Your land, your next season</p>
-                    <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">A plan that starts with your field.</h2>
-                  </div>
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#d1eaa0] text-[#1b5038]"><Leaf size={19} /></span>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-white/75">Crop rotation and climate context, brought together in one simple view.</p>
+            <div className="flex items-center gap-2">
+              <div className="hidden rounded-full bg-[#F0F4EE] p-1 sm:flex" role="group" aria-label="Language">
+                {([["bn", "বাংলা"], ["en", "EN"]] as const).map(([l, label]) => (
+                  <button key={l} onClick={() => setLang(l)} aria-pressed={lang === l} className={`h-9 rounded-full px-3.5 text-sm font-bold transition ${lang === l ? "bg-white shadow-sm" : "text-[#35524A] hover:bg-white/70"} ${focus}`}>
+                    <span className={l === "bn" ? "pt-[3px] inline-block" : ""}>{label}</span>
+                  </button>
+                ))}
               </div>
-
-              <div className="absolute bottom-5 left-5 right-5 grid grid-cols-2 gap-3 sm:bottom-7 sm:left-7 sm:right-7">
-                <div className="rounded-2xl border border-white/20 bg-[#123727]/75 p-4 text-white shadow-lg backdrop-blur-xl">
-                  <div className="flex items-center gap-2 text-[#d3e9a0]"><CloudSun size={16} /><span className="text-[10px] font-bold uppercase tracking-wider">Climate context</span></div>
-                  <p className="mt-3 text-sm font-bold">NASA POWER</p>
-                  <p className="mt-1 text-[10px] leading-4 text-white/65">Conditions and trends, with source and freshness clearly shown.</p>
-                </div>
-                <div className="rounded-2xl border border-white/20 bg-[#123727]/75 p-4 text-white shadow-lg backdrop-blur-xl">
-                  <div className="flex items-center gap-2 text-[#d3e9a0]"><Sprout size={16} /><span className="text-[10px] font-bold uppercase tracking-wider">Seasonal plan</span></div>
-                  <p className="mt-3 text-sm font-bold">4 years · 12 seasons</p>
-                  <p className="mt-1 text-[10px] leading-4 text-white/65">A transparent crop rotation shaped by your planning priorities.</p>
-                </div>
-              </div>
-              <div className="absolute bottom-[178px] right-7 hidden rounded-full border border-[#e9f3cf]/70 bg-[#d5e99a] p-3 text-[#234631] shadow-lg sm:block"><MapPinned size={18} /></div>
-              <div className="absolute bottom-[204px] left-[18%] hidden rounded-full border border-white/60 bg-white/85 p-2.5 text-[#346948] shadow-md sm:block"><Sprout size={17} /></div>
-              <div className="absolute right-[22%] top-[265px] hidden h-3 w-3 rounded-full bg-[#f2db80] shadow-[0_0_0_7px_rgba(242,219,128,.2)] sm:block" />
+              <Link href="/dashboard" className={`hidden h-11 items-center gap-2 rounded-full bg-[#0B2A24] pl-5 pr-1.5 text-sm font-bold text-white hover:bg-[#12403A] sm:inline-flex ${focus}`}>
+                <span className={nudge}>{tr("শুরু করুন", "Get started")}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E3F27A] text-[#0B2A24]"><ArrowRight size={15} aria-hidden /></span>
+              </Link>
+              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu" className={`flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F4EE] md:hidden ${focus}`}>
+                {open ? <X size={20} aria-hidden /> : <Menu size={20} aria-hidden />}
+              </button>
             </div>
           </div>
-          <div className="absolute -bottom-5 -left-3 rounded-2xl border border-[#e1e8d8] bg-white/95 px-4 py-3 shadow-xl backdrop-blur sm:-left-8">
-            <p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#748775]">Grounded in evidence</p>
-            <p className="mt-1 text-xs font-bold text-[#244b34]">No black-box recommendations</p>
+
+          {open && (
+            <div className="mt-2 rounded-3xl border border-white/70 bg-white p-3 text-[#0B2A24] shadow-2xl md:hidden">
+              {([["#product", tr("প্রোডাক্ট", "Product")], ["#data", tr("ডেটা উৎস", "Data sources")], ["/dashboard", tr("ড্যাশবোর্ড", "Dashboard")], ["/dashboard?preset=barind", tr("ডেমো", "Demo")]] as const).map(([href, label]) => (
+                <a key={href} href={href} onClick={() => setOpen(false)} className="flex h-12 items-center rounded-2xl px-4 font-bold hover:bg-[#F0F4EE]"><span className={nudge}>{label}</span></a>
+              ))}
+              <button onClick={() => setLang(lang === "bn" ? "en" : "bn")} className="mt-1 flex h-12 w-full items-center gap-2 rounded-2xl px-4 font-bold hover:bg-[#F0F4EE]"><Languages size={17} aria-hidden />{lang === "bn" ? "English" : "বাংলা"}</button>
+            </div>
+          )}
+        </header>
+
+        {/* Message */}
+        <div className="mx-auto max-w-4xl pt-14 text-center sm:pt-20">
+          <p className="rise inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-1.5 text-sm font-medium ring-1 ring-white/25 backdrop-blur" style={{ animationDelay: ".1s" }}>
+            <Satellite size={14} className="text-[#E3F27A]" aria-hidden />{tr("NASA Space Apps 2026 · Field Shift", "NASA Space Apps 2026 · Field Shift")}
+          </p>
+          <h1 className={`${display.className} rise mt-6 text-[clamp(2.3rem,6vw,4.9rem)] font-extrabold leading-[1.08] tracking-tight`} style={{ animationDelay: ".2s" }}>
+            {tr("আপনার জমির জন্য সেরা ফসল-আবর্তন,", "The right crop rotation for your land,")}
+            <br />
+            <span className="mt-2 inline-block -rotate-1 rounded-2xl bg-[#E3F27A] px-4 py-0.5 text-[#0B2A24]">{tr("মহাকাশের তথ্য থেকে", "read from orbit")}</span>
+          </h1>
+          <p className="rise mx-auto mt-7 max-w-[58ch] text-lg leading-relaxed text-[#DCEBE6]" style={{ animationDelay: ".3s" }}>
+            {tr("SMAP মাটির আর্দ্রতা, Landsat বাষ্পীভবন ও NASA POWER আবহাওয়া দিয়ে তিনটি আবর্তন পাশাপাশি দেখুন। ইন্টারনেট ছাড়াও চলে। সিদ্ধান্ত নেন আপনি।",
+              "See three rotations side by side using SMAP soil moisture, Landsat evapotranspiration and NASA POWER weather. Works offline. You make the decision.")}
+          </p>
+          <div className="rise mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: ".4s" }}>
+            <Link href="/dashboard" className={`inline-flex min-h-14 items-center gap-3 rounded-full bg-[#E3F27A] py-1.5 pl-8 pr-1.5 text-base font-bold text-[#0B2A24] shadow-xl shadow-black/25 hover:bg-[#EDF79A] ${focus}`}>
+              {tr("আমার জমির পরিকল্পনা", "Plan my field")}
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0B2A24] text-white"><ArrowRight size={18} aria-hidden /></span>
+            </Link>
+            <Link href="/dashboard?preset=barind" className={`inline-flex min-h-14 items-center gap-3 rounded-full bg-white/12 py-1.5 pl-7 pr-1.5 text-base font-bold ring-1 ring-white/35 backdrop-blur hover:bg-white/20 ${focus}`}>
+              {tr("৩০ সেকেন্ড ডেমো", "30-second demo")}
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#0B2A24]"><Play size={16} aria-hidden /></span>
+            </Link>
+          </div>
+          <p className="rise mt-5 inline-flex items-center gap-2 text-sm text-[#BFD6CF]" style={{ animationDelay: ".5s" }}>
+            <WifiOff size={14} aria-hidden />{tr("অফলাইন-ফার্স্ট PWA · বাংলা ও English", "Offline-first PWA · Bangla and English")}
+          </p>
+        </div>
+
+        {/* Dashboard preview */}
+        <div id="product" className="rise relative mx-auto mt-14 max-w-6xl" style={{ animationDelay: ".6s" }}>
+          <div className="rounded-[28px] bg-white/15 p-2 shadow-2xl shadow-black/40 ring-1 ring-white/30 backdrop-blur-xl sm:p-3">
+            <div className="flex items-center gap-1.5 px-3 pb-2 pt-1" aria-hidden>
+              {["#FF8A8F", "#F2C14E", "#7BD88F"].map((c) => <i key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}
+              <span className="ml-3 rounded-full bg-white/15 px-3 py-0.5 text-xs text-[#DCEBE6]">terrashift.app/dashboard</span>
+            </div>
+            <div className="relative max-h-[300px] overflow-hidden rounded-2xl sm:max-h-[520px]">
+              <img src={SHOT} alt={tr("টেরাশিফ্‌ট ড্যাশবোর্ড: স্যাটেলাইট মানচিত্রে জমি নির্বাচন", "TerraShift dashboard: choosing a field on a satellite map")} className="w-full" />
+              <div aria-hidden className="absolute inset-x-0 bottom-0 h-32" style={{ background: "linear-gradient(0deg,#0B2A24,transparent)" }} />
+            </div>
+          </div>
+
+          {/* Floating callouts */}
+          <div className="drift absolute -left-2 top-24 hidden max-w-[230px] rounded-2xl bg-white p-3.5 text-[#0B2A24] shadow-2xl shadow-black/30 lg:block">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-[#2F7D4F]"><MapPin size={14} aria-hidden />{tr("ধাপ ১", "Step 1")}</p>
+            <p className={`${display.className} mt-0.5 text-sm font-extrabold`}>{tr("স্যাটেলাইট মানচিত্রে নিজের জমি বেছে নিন", "Pick your field on a satellite map")}</p>
+          </div>
+          <div className="drift absolute -right-2 top-48 hidden max-w-[240px] rounded-2xl bg-white p-3.5 text-[#0B2A24] shadow-2xl shadow-black/30 lg:block" style={{ animationDelay: "1.5s" }}>
+            <p className="flex items-center gap-1.5 text-xs font-bold text-[#2E7BD6]"><SlidersHorizontal size={14} aria-hidden />{tr("ধাপ ২", "Step 2")}</p>
+            <p className={`${display.className} mt-0.5 text-sm font-extrabold`}>{tr("পানি, আয়, মাটির অগ্রাধিকার স্লাইডারে দিন", "Set water, income and soil priorities with sliders")}</p>
+          </div>
+          <div className="drift absolute -bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2 rounded-full bg-[#E3F27A] px-5 py-2.5 text-sm font-bold text-[#0B2A24] shadow-2xl shadow-black/30 sm:flex" style={{ animationDelay: "3s" }}>
+            <Droplets size={16} aria-hidden />{tr("তিনটি আবর্তন তুলনা, প্রমাণ ও ঝুঁকিসহ", "Three rotations compared, with evidence and risks")}
           </div>
         </div>
-      </section>
 
-      <section id="approach" className="border-y border-[#dfe5d8] bg-white/55">
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-12 lg:py-20">
-          <div className="max-w-2xl">
-            <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#77905e]">From observation to action</p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Useful guidance, with the reasoning included.</h2>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {highlights.map(({ icon: Icon, title, description }, index) => (
-              <article key={title} className="rounded-3xl border border-[#e3e8df] bg-[#fbfcf8] p-6 sm:p-7">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#e7efdc] text-[#426d48]"><Icon size={21} /></div>
-                <p className="mt-6 text-[10px] font-extrabold uppercase tracking-[.18em] text-[#8b9b82]">0{index + 1}</p>
-                <h3 className="mt-2 text-lg font-bold tracking-tight">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-[#6d7f70]">{description}</p>
-              </article>
-            ))}
-          </div>
+        {/* Data strip */}
+        <div id="data" className="mt-16 grid gap-6 pb-10 sm:grid-cols-2">
+          {([[tr("NASA পর্যবেক্ষণ", "NASA observations"), NASA, "#E3F27A"], [tr("বাহ্যিক উৎস, NASA নয়", "External sources, not NASA"), OTHER, "#9CC9FF"]] as const).map(([title, items, c]) => (
+            <div key={title}>
+              <p className="flex items-center gap-2 text-sm font-bold" style={{ color: c }}><ShieldCheck size={15} aria-hidden />{title}</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {items.map((n) => <li key={n} className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold ring-1 ring-white/20">{n}</li>)}
+              </ul>
+            </div>
+          ))}
         </div>
-      </section>
-
-      <section id="science" className="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-16 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12 lg:py-20">
-        <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#77905e]">Built for the realities of farming</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">The right next step starts with what you know.</h2>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-[#687c6d]">Add a field location and farm details, choose what matters most, then explore the crop plan and available Earth observation context. Keep your latest plan close, even when the connection drops.</p>
-        </div>
-        <Link href="/dashboard" className="inline-flex min-h-14 shrink-0 items-center justify-center gap-3 rounded-full bg-[#1c5039] px-7 text-sm font-bold text-white shadow-lg shadow-[#1c5039]/15 transition hover:-translate-y-0.5 hover:bg-[#133c2b]">
-          Go to your dashboard <ArrowRight size={17} />
-        </Link>
-      </section>
-
-      <footer className="border-t border-[#dfe5d8] px-5 py-6 text-center text-xs text-[#718171]">
-        TerraShift · Climate-adaptive crop planning for Bangladesh’s delta farms
-      </footer>
+      </div>
     </main>
   );
 }
