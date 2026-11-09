@@ -32,5 +32,11 @@
     "bangladesh"
   ],
   "author": "Team AgroNova",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^18.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
+  }
 }
