@@ -47,6 +47,7 @@ import {
   Info,
   ExternalLink,
   Trophy,
+  User,
 } from "lucide-react";
 
 export default function Home() {
@@ -149,7 +150,13 @@ export default function Home() {
       const farmResponse = await api.getFarms();
       const farms = farmResponse.data?.farms || [];
       const selectedFarm = farms.find((farm: any) => farm.id === savedFarmId) || farms[0];
-      if (!selectedFarm) return;
+      if (!selectedFarm) {
+        const storedUser = getStoredUser();
+        if (storedUser?.fullName) {
+          setFarmName(`${storedUser.fullName}-এর খামার`);
+        }
+        return;
+      }
 
       setSelectedFarmId(selectedFarm.id);
       localStorage.setItem(`terrashift_farm_id_${userId}`, selectedFarm.id);
@@ -721,6 +728,12 @@ export default function Home() {
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     NASA Space Apps Challenge 2026
                   </span>
+                  {user && (
+                    <span className="px-3 py-0.5 rounded-full text-[11px] font-black bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm flex items-center gap-1.5 border border-emerald-400">
+                      <User className="w-3 h-3 text-white" />
+                      <span>{language === "bn" ? "কৃষক:" : "Farmer:"} {user.fullName || user.name || user.phone}</span>
+                    </span>
+                  )}
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200">
                     {language === "bn" ? "জলবায়ু অভিযোজিত ৩ বছরের শস্য আবর্তন" : "Climate-Adaptive 3-Year Crop Rotation"}
                   </span>
@@ -1237,9 +1250,22 @@ export default function Home() {
         language={language}
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(loggedUser) => {
+          setUser(loggedUser);
+          setIsAuthModalOpen(false);
+          const userName = loggedUser.fullName || loggedUser.name;
+          if (userName && farmName.includes("আবদুর রহমান")) {
+            setFarmName(`${userName}-এর খামার`);
+          }
+          void restoreFarm(loggedUser.id);
+        }}
         onSuccess={(loggedUser) => {
           setUser(loggedUser);
           setIsAuthModalOpen(false);
+          const userName = loggedUser.fullName || loggedUser.name;
+          if (userName && farmName.includes("আবদুর রহমান")) {
+            setFarmName(`${userName}-এর খামার`);
+          }
           void restoreFarm(loggedUser.id);
         }}
       />

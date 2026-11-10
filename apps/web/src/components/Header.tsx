@@ -141,10 +141,14 @@ export function Header({
 
           {/* Auth Button */}
           {user ? (
-            <div className="flex items-center gap-1.5 pl-1">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 hidden md:inline truncate max-w-[120px]">
-                {user.name || user.phone}
-              </span>
+            <div className="flex items-center gap-2 pl-1">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-xs font-black text-emerald-900 dark:text-emerald-200 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate max-w-[120px] sm:max-w-[180px]">
+                  {user.fullName || user.name || user.phone}
+                </span>
+              </div>
               <button
                 onClick={onLogout}
                 className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"

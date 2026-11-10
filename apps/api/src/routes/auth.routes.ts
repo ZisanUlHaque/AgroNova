@@ -90,7 +90,28 @@ authRouter.post("/login", authRateLimiter, async (req: Request, res: Response) =
     }
 
     const { phone, password } = parse.data;
-    const user = await db.findUserByPhone(phone);
+    let user = await db.findUserByPhone(phone);
+
+    // Auto-seed Demo Farmer Rafiq if missing from a new database (e.g. fresh Neon DB)
+    if (!user && phone === "01700000000" && password === "rafiq123") {
+      const passwordHash = await bcrypt.hash("rafiq123", 10);
+      user = await db.createUser({
+        phone: "01700000000",
+        fullName: "মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)",
+        passwordHash,
+        role: "farmer",
+      });
+      await db.createFarm({
+        userId: user.id,
+        name: "মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)",
+        latitude: 22.7010,
+        longitude: 90.3535,
+        areaHectares: 1.5,
+        soilTexture: "clay_loam",
+        soilPh: 6.8,
+        soilSource: "MEASURED",
+      });
+    }
 
     if (!user) {
       return res.status(401).json({
