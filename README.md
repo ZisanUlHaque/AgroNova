@@ -1,384 +1,200 @@
-# TerraShift 🌱
-### Adapting Smallholder Delta Farms with NASA Earth Observations
+<div align="center">
 
-[![NASA Space Apps Challenge 2026](https://img.shields.io/badge/NASA%20Space%20Apps-2026-blue.svg)](https://www.spaceappschallenge.org/)
-[![Challenge](https://img.shields.io/badge/Challenge-Field%20Shift%3A%20Adapting%20Farms%20with%20NASA%20Data-orange.svg)]()
-[![Team](https://img.shields.io/badge/Team-AgroNova-green.svg)]()
-[![Status](https://img.shields.io/badge/Status-Build--Ready%20MVP-success.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+# 🌱 TerraShift (টেরাশিফ্‌ট)
+### Climate-Adaptive Multi-Year Crop Rotation Using NASA Earth Observations
 
+[![Live App](https://img.shields.io/badge/Live%20Demo-agronova--five--theta.vercel.app-10b981?style=for-the-badge&logo=vercel)](https://agronova-five-theta.vercel.app)
+[![NASA Space Apps 2026](https://img.shields.io/badge/NASA%20Space%20Apps-2026-0B3D91?style=for-the-badge&logo=nasa)](https://www.spaceappschallenge.org/)
+[![Team AgroNova](https://img.shields.io/badge/Team-AgroNova-059669?style=for-the-badge)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-f59e0b?style=for-the-badge)](LICENSE)
+
+**An offline-first, bilingual (বাংলা / English) agronomic decision-support PWA empowering smallholder delta & drought-zone farmers with NASA SMAP L4, Landsat 9 SSEBop ET, and NASA POWER telemetry.**
+
+[🚀 Launch Live App](https://agronova-five-theta.vercel.app) · [📊 Dashboard](https://agronova-five-theta.vercel.app/dashboard) · [🛰️ NASA Data Pipeline](docs/nasa-data-integration.md) · [📐 Scoring Equations](docs/scoring.md)
+
+<br />
+
+<img src="apps/web/public/dashboard.png" alt="TerraShift Dashboard Preview" width="92%" style="border-radius: 16px;" />
+
+</div>
+
+---
+
+## 🎯 For NASA Space Apps Judges: 60-Second Walkthrough
+
+1. **Open the Live Deployment**: Visit **[agronova-five-theta.vercel.app/dashboard](https://agronova-five-theta.vercel.app/dashboard)**.
+2. **One-Click Demo Farmer Login**: Click **লগইন (Login) → "কৃষক রফিক হিসেবে প্রবেশ (১-ক্লিক ডেমো)"** to load an authenticated smallholder profile backed by **Neon PostgreSQL / PostGIS**.
+3. **Compare Two Real Bangladesh Agro-Ecological Benchmarks**:
+   - **Barind Tract Drought Zone (Porsha, Naogaon · `24.9030° N, 88.4830° E` · AEZ-25)**: Severe groundwater drawdown & high heat stress (`ET₀ = 3.82 mm/day`, SMAP rootzone `0.194 m³/m³`).
+   - **Coastal Delta Zone (Babuganj, Barisal · `22.7010° N, 90.3535° E` · AEZ-13)**: Saline & tidal submergence risk (`SMAP rootzone = 0.26 m³/m³`).
+4. **Interactive Field Recalculation**: Drop a pin anywhere on the map or edit farm size, soil type, and priority weights — watch the 3-year / 4-year crop rotations, water savings, BNF nitrogen gain, and BDT income scale dynamically.
+5. **1-Page Printable Farmer Advisory PDF**: Click **"অফিসিয়াল সনদ / PDF"** to generate a clean, single-page A4 landscape agronomic advisory certificate for local extension officers (DAE).
+6. **True Airplane-Mode Test**: Toggle **"অফলাইন মোড"** in the header to verify zero-internet execution via IndexedDB and pre-bundled AEZ baselines.
 
 ---
 
 ## 📖 Executive Summary & The Problem
 
-Smallholder farmers in the lower Ganges-Brahmaputra-Meghna delta (e.g. Barisal, Khulna, Patuakhali, Bhola) face erratic monsoons, surging groundwater pumping tariffs for winter Boro rice, and accelerating topsoil degradation. Continuous double-rice monoculture (*Boro Rice $\to$ Fallow $\to$ T. Aman Rice*) has depleted topsoil organic matter to under $1.0\%$ across millions of delta hectares. According to the **United Nations FAO (SOLAW 2021 report)**:
-> *"Human-induced soil degradation affects 34% of agricultural land, and if current unsustainable agricultural practices continue, up to 90% of the Earth's topsoil could be at risk of degradation by 2050."* (FAO, 2022).
+Across Bangladesh's Barind drought belt and the lower Ganges–Brahmaputra–Meghna delta, millions of smallholder farmers are trapped in continuous double-rice monoculture (*Boro Rice → Fallow → T. Aman Rice*). This depletes topsoil organic carbon below `1.0%`, accelerates aquifer collapse from diesel groundwater pumping, and locks pest lifecycles across consecutive seasons.
 
-Most digital agricultural tools require costly soil laboratory tests or uninterrupted 4G connectivity—luxuries unavailable to 1.5-hectare farmers like **Mohammad Rafiq** in Babuganj, Barisal.
+> *"Human-induced soil degradation affects 34% of agricultural land, and if current unsustainable agricultural practices continue, up to 90% of the Earth's topsoil could be at risk of degradation by 2050."* — **FAO (2022), SOLAW 2021** ([DOI: 10.4060/cb9910en](https://doi.org/10.4060/cb9910en), Ch. 2, Sec. 2.3)
 
-**TerraShift** (টিম: **AgroNova**) is an offline-first, mobile-first Progressive Web App (PWA). A farmer simply drops a pin on their field; TerraShift automatically ingests NASA Earth observations, extracts regional rootzone soil moisture from **NASA SMAP L4**, computes atmospheric evaporative demand ($ET_0$) via the standard **FAO-56 Penman-Monteith** method, and executes a deterministic, agronomist-validated engine to generate an adaptive **3-Year (9-Season) or 4-Year (12-Season) Crop Rotation Plan**.
-
-Every season includes plain-language agronomic rationale in **Bengali (বাংলা) and English**, local varietal recommendations (e.g. *BARI Sarisha-14, BARI Mung-6, BRRI dhan49*), honest ranges for water savings, and biological nitrogen fixation.
+**TerraShift (টেরাশিফ্‌ট)** translates complex NASA satellite granules into actionable **3-Year (9-Season) and 4-Year (12-Season) crop rotation schedules** tailored to smallholder plots—without needing expensive lab soil tests or continuous 4G internet.
 
 ---
 
-## 🚀 Key Innovations & Distinct Features
+## 🚀 Why TerraShift Stands Out
 
-| Feature | Traditional DAE Calendars | Black-Box AI Apps (e.g. Plantix) | Global Commercial Tools | **TerraShift (Team AgroNova)** |
+| Dimension | Static Extension Pamphlets | Black-Box AI Chatbots | Commercial AgTech | **TerraShift (Team AgroNova)** |
 | :--- | :--- | :--- | :--- | :--- |
-| **Environmental Awareness** | Static paper tables, no climate dynamics | Diagnostic photo-only, no multi-year planning | US/Europe-centric, paid satellite subscriptions | **Live daily NASA POWER + SMAP L4 rootzone assimilation** |
-| **Scientific Explainability** | Rigid agronomic rules | Black-box ML hallucination risk, unverified | Proprietary corporate algorithms | **100% deterministic, explainable formulas with academic citations** |
-| **Delta Cropping Adaptation** | Fixed recommendations | Unadapted to 3-season delta | Incompatible with monsoon flood dynamics | **Built specifically for 3-season Rabi / Kharif-1 / Kharif-2 Bengal Delta** |
-| **Connectivity Requirement** | Paper manuals | Requires constant 4G | Cloud server required | **Dual-layer offline PWA: pre-bundled 30 AEZ baselines + client-side CPU engine** |
-| **Soil Health Forecasting** | Qualitative advice | None | General NPK requirements | **Quantitative BNF & SOM mass balance with peer-reviewed models** |
-| **Farmer Customization** | Fixed extension handouts | None | Enterprise farm machinery focus | **Predefined agronomist presets + custom farmer priority sliders** |
+| **Satellite Assimilation** | None (static annual calendar) | Hallucination-prone, no telemetry | Paid US/EU-centric subscriptions | **Live NASA POWER + SMAP L4 + Landsat 9 SSEBop** |
+| **Explainability** | Rigid rulebooks | Unverifiable LLM guesses | Closed proprietary scoring | **100% deterministic formulas with peer-reviewed citations** |
+| **Regional Fit** | Generic national advice | Untrained on 3-season delta | Built for mechanized monocrops | **Tuned for Rabi / Kharif-1 / Kharif-2 & BARI/BRRI varieties** |
+| **Offline Resilience** | Paper only | Requires constant 4G | Cloud-dependent | **True offline PWA: IndexedDB + browser-side CPU engine** |
+| **Farmer Agency** | Prescriptive, one-size-fits-all | No multi-objective trade-offs | Enterprise-focused | **Interactive Water / Soil / Nitrogen sliders + decision-support banner** |
 
 ---
 
-## 🛰️ NASA Earth Observation Assets vs. External Datasets
+## 🛰️ Strict Scientific Transparency: NASA vs. External Datasets
 
-TerraShift maintains **radical scientific transparency** by clearly separating direct NASA satellite assets from external reference datasets:
+TerraShift explicitly separates NASA Earth Observation products from external non-NASA datasets across the UI, telemetry modals, and documentation:
 
 ### Section A: Direct NASA Earth Observations
-1. **NASA SMAP L4 (SPL4SMGP · 9 km)**:
-   - Surface soil moisture ($0-5\text{ cm}$) and Rootzone soil moisture ($0-100\text{ cm}$).
-   - Spherical geodesic nearest-cell search computes regional hydrological water deficit context.
-2. **NASA POWER Agroclimatology (0.5° × 0.5°)**:
-   - Daily surface air temperature (`T2M`, `T2M_MAX`, `T2M_MIN`), corrected precipitation (`PRECTOTCORR`), solar irradiance (`ALLSKY_SFC_SW_DWN`), dewpoint (`T2MDEW`), and wind speed (`WS2M`).
-   - Monitors heat-stress days ($T_{\text{max}} \ge 33^\circ\text{C}$) to protect sensitive flowering stages.
-3. **FAO-56 Penman-Monteith Evapotranspiration ($ET_0$) & Landsat Thermal ET**:
-   - Reference evaporative demand computed from daily NASA POWER variables.
-   - Landsat 8/9 TIRS thermal infrared surface energy balance (SSEBop) framework informs the evaporative fraction ($ET_a / ET_0$).
+- **NASA SMAP L4 (`SPL4SMGP` · 9 km)**: Surface (`0–5 cm`) and rootzone (`0–100 cm`) volumetric soil moisture retrieved via spherical geodesic nearest-cell lookup.
+- **NASA POWER Agroclimatology (`0.5° × 0.5°`)**: Daily temperature (`T2M`, `T2M_MAX`, `T2M_MIN`), corrected precipitation (`PRECTOTCORR`), solar irradiance (`ALLSKY_SFC_SW_DWN`), dewpoint (`T2MDEW`), and wind speed (`WS2M`), tracking heat-stress days ($\ge 33^\circ\text{C}$).
+- **Landsat 8/9 Thermal ET (SSEBop) & MODIS Cross-Check**: Thermal surface energy balance evaporative fraction ($ET_a = ET_f \times k \times ET_0$) validated against MODIS (`±15%` consistency band) alongside **FAO-56 Penman-Monteith** reference evapotranspiration ($ET_0$).
+- **NASA SRTM**: Digital elevation context for flood-plain vs. upland barind runoff classification.
 
-### Section B: External / Non-NASA Reference Datasets (Strictly Demarcated)
-1. **ISRIC SoilGrids REST (Wageningen, Netherlands)**:
-   - Global 250m machine-learning derived soil profile (sand, clay, silt fractions and pH).
-   - *Notice: SoilGrids is an external Dutch digital soil map, NOT a NASA dataset.*
-2. **National Agricultural Research Institutes (BARI, BRRI, BJRI, BWMRI)**:
-   - Bangladesh crop databases, varietal durations, and biological nitrogen fixation capacities.
-3. **OpenStreetMap & Leaflet**:
-   - Cartographic base tiles cached in IndexedDB for zero-internet map display.
+### Section B: Non-NASA External Reference Data (Explicitly Demarcated)
+- **ISRIC SoilGrids REST (Wageningen, Netherlands)**: 250 m soil texture and pH baseline (*explicitly labeled as non-NASA in all UI views*).
+- **BARI / BRRI / BJRI / BWMRI**: Official Bangladesh varietal maturity days, salinity/drought tolerance, and biological nitrogen fixation tables.
+- **OpenStreetMap & Esri World Imagery**: Interactive field selection tiles via Leaflet.
 
 ---
 
-## 🔬 Scientific Methodology: Future Soil Health Prediction
+## 🔬 Quantitative Models & Agronomic Impact
 
-Soil moisture alone cannot validate soil fertility or carbon. TerraShift couples NASA moisture and thermal dynamics with peer-reviewed mass-balance models:
+1. **Biological Nitrogen Fixation (BNF) Mass Balance** (*Peoples et al., 2001, 2009; BARI Pulses Trials*):
+   $$\Delta N_{\text{bio}} = \left( \text{BNF}_{\text{crop}} \times f_{\theta}(\text{SMAP}) \times f_{\text{pH}} \right) - N_{\text{harvest\_removal}}$$
+   Incorporating Mungbean (*BARI Mung-6*) or Lentil (*BARI Masur-8*) fixes **35–75 kg N/ha/year**, cutting synthetic urea needs by **35%–45%**.
+2. **Soil Organic Carbon (SOC) Trajectory** (*RothC / IPCC Tier 1 AFOLU; Hossain et al., 2021*):
+   $$\Delta \text{SOM}_{\text{annual}} = \sum \left[ C_{\text{biomass}} \times k_{\text{humification}} \right] - \text{SOM}_{\text{oxidation}}$$
+   Pulse stover and jute leaf litter return rebuild topsoil organic matter by **+0.12% to +0.18%/year** instead of depleting under bare fallow.
+3. **Botanical Family Alternation**: Enforces *Poaceae → Fabaceae → Brassicaceae* rotation to break Brown Planthopper and Sheath Blight host cycles (**-67% pest vulnerability**).
 
-1. **Biological Nitrogen Fixation (BNF) Model**:
-   - Based on **Peoples et al. (2001, *Plant and Soil*)** and **BARI Pulses Research Division (2020–2023)** trials:
-     $$\Delta N_{\text{bio}} = \left( \text{BNF}_{\text{crop}} \times f_{\theta}(\text{SMAP}) \times f_{\text{pH}} \right) - N_{\text{harvest\_removal}}$$
-   - Legumes fix $35 - 75\ \text{kg N/ha/year}$. Nodulated stover left in the field supplies $+25 - 45\ \text{kg N/ha}$ to the succeeding crop, reducing chemical urea demand by $35\% - 45\%$.
-2. **Soil Organic Carbon (SOC) and Humus Restoration Model**:
-   - Adapted from the **IPCC Tier 1 Cropland Model (IPCC AFOLU, Chapter 5)** and long-term delta trials (**Hossain et al., 2021**):
-     $$\Delta \text{SOM}_{\text{annual}} = \sum \left[ C_{\text{biomass}} \times k_{\text{humification}} \right] - \text{SOM}_{\text{oxidation}}$$
-   - Mung bean stover incorporation ($1.8\text{ t/ha}$) and Jute leaf litter shedding ($3.0 - 4.0\text{ t/ha}$) replenish topsoil humus, yielding an estimated **$+0.10\% \text{ to } +0.18\%$ annual topsoil organic matter increase**.
-3. **Pest & Pathogen Lifecycle Disruption**:
-   - Enforces botanical family alternation (*Poaceae* $\to$ *Fabaceae* $\to$ *Brassicaceae*).
-   - Breaks Brown Planthopper (*Nilaparvata lugens*) and Sheath Blight (*Rhizoctonia solani*) cycles, cutting pest vulnerability by $67\%$. Mustard biofumigation naturally suppresses soil nematodes.
-
----
-
-## 📊 Quantitative Impact & Savings: Conventional vs. TerraShift
-
-| Measurable Indicator | Conventional Monoculture (Boro-Fallow-Aman) | TerraShift Adaptive Diversified Rotation | Quantifiable Real-World Benefit |
+| Indicator | Conventional (Boro–Fallow–Aman) | TerraShift Adaptive Rotation | Net Benefit (per Hectare / Year) |
 | :--- | :--- | :--- | :--- |
-| **Irrigation Water** | $1,300\text{ mm/year}$ ($13,000\text{ m}^3/\text{ha}$) | $450 - 550\text{ mm/year}$ ($5,000\text{ m}^3/\text{ha}$) | **$-61.5\%$ groundwater pumping cut** ($\approx 8,000\text{ m}^3/\text{ha}$ saved) |
-| **Pumping Fuel Cost** | $\approx \text{BDT } 18,000 - 24,000/\text{ha}$ | $\approx \text{BDT } 6,000 - 8,000/\text{ha}$ | **Saves $\approx \text{BDT } 12,000 - 16,000/\text{ha/year}$** in diesel pumping |
-| **Biological N Fixation**| $0\text{ kg N/ha}$ (100% synthetic urea) | $+45\text{ to } +75\text{ kg biological N/ha/year}$ | Replaces $75 - 125\text{ kg}$ synthetic urea |
-| **Urea Cost Saved** | Continuous chemical expenditure | $35\% - 45\%$ urea reduction | **Saves $\approx \text{BDT } 2,500 - 4,500/\text{ha/year}$** in fertilizer costs |
-| **Soil Organic Matter** | Depletes at $-0.04\%/\text{year}$ | Increases at $+0.12\% \text{ to } +0.18\%/\text{year}$ | Reverses delta topsoil degradation |
-| **Pest Vulnerability** | High ($8.5/10$ risk index) | Low ($2.8/10$ risk index) | **$-67\%$ pest vulnerability** (breaks monoculture) |
+| **Irrigation Demand** | `1,300 mm/yr` (`13,000 m³`) | `450–550 mm/yr` (`5,000 m³`) | **-61.5% pumping cut** (`~4,600–8,000 m³` saved) |
+| **Diesel Pumping Cost** | `৳18,000 – 24,000` | `৳6,000 – 8,000` | **Saves ৳12,000 – 16,000/ha/yr** |
+| **Biological Nitrogen** | `0 kg N/ha` | `+45 to +75 kg N/ha` | **Replaces 75–125 kg urea** (`৳2,500–4,500` saved) |
+| **Soil Organic Matter** | `-0.04% / yr` (depleting) | `+0.12% to +0.18% / yr` | **Reverses delta topsoil degradation** |
+| **Pest Vulnerability** | `8.5 / 10` (High) | `2.8 / 10` (Low) | **-67% monoculture pest pressure** |
 
 ---
 
-## 📍 Real Bangladesh End-to-End Working Case Study
+## 🏗️ System Architecture
 
-You can test this working example in the live app with a single click (**"বাস্তব উদাহরণ দেখুন: মোহাম্মদ রফিক"**):
-- **Farmer**: Mohammad Rafiq (মোহাম্মদ রফিক), 48 years old.
-- **Location**: Babuganj, Barisal District, Lower Meghna Floodplain (`22.7010° N`, `90.3535° E` · AEZ 13).
-- **Field Size**: 1.5 Hectares (3.7 Acres).
-- **Soil Profile**: Clay Loam (পলি দোআঁশ), Soil pH: 6.8.
-- **NASA Inputs Ingested**:
-  * NASA SMAP L4 Rootzone Moisture: $0.26\ \text{m}^3/\text{m}^3$ (nearest cell $3.8\text{ km}$).
-  * NASA POWER Mean Temp: $24.8^\circ\text{C}$, Solar Radiation: $17.4\ \text{MJ/m}^2/\text{day}$, Rain: $312\text{ mm}$.
-  * FAO-56 Reference Evapotranspiration: $3.8\ \text{mm/day}$.
-- **Selected Priority**: "Restore Nitrogen & Conserve Water"
-- **Generated 3-Year Adaptive Rotation Plan**:
-  * **Year 1**: সরিষা (Mustard · BARI Sarisha-14) $\to$ মুগ ডাল (Mung Bean · BARI Mung-6) $\to$ রোপা আমন ধান (T. Aman · BRRI dhan49).
-  * **Year 2**: মসুর ডাল (Lentil · BARI Masur-8) $\to$ পাট (Jute · BJRI Deshi Pat-8) $\to$ রোপা আমন ধান (T. Aman · BRRI dhan87).
-  * **Year 3**: গম (Wheat · BARI Gom-33) $\to$ আউশ ধান (Aus · BRRI dhan48) $\to$ খরিফ মুগ ডাল (Summer Mung).
+```mermaid
+flowchart LR
+    Farmer["🌾 Farmer Browser PWA<br/>(Next.js 14 · Leaflet · IndexedDB)"]
+    API["⚡ Express REST API<br/>(TypeScript · Zod · Prisma · JWT)"]
+    Engine["🧠 Deterministic Engine<br/>(packages/engine · AHP Weights)"]
+    Worker["🛰️ Python NASA Worker<br/>(SMAP L4 · POWER · FAO-56 · SoilGrids)"]
+    DB[("🐘 Neon PostgreSQL<br/>+ PostGIS")]
 
----
-
-## 📶 True Offline Architecture (Zero-Internet Delta Operation)
-
-Smallholder delta farmers often lack reliable internet in the field. TerraShift employs a 3-tier offline architecture:
-
-1. **Pre-Bundled Regional AEZ Climatology**:
-   - The PWA precaches 10-year climatological baselines for all 30 Agro-Ecological Zones (AEZs) of Bangladesh. Even if an offline farmer visits the app for the first time, recommendations generate immediately using local AEZ context.
-2. **Client-Side CPU Engine**:
-   - Candidate generation and multi-criteria scoring run 100% inside the browser/phone CPU via TypeScript with zero server roundtrips.
-3. **Sync-on-Reconnect Queue**:
-   - Saved offline plans and field edits persist in IndexedDB and automatically synchronize with live NASA POWER and SMAP L4 APIs when connectivity resumes.
-
----
-
-## 🏗️ Monorepo Architecture
-
+    Farmer <-->|HTTPS / JSON| API
+    Farmer -.->|Offline Fallback| Farmer
+    API --> Engine
+    API <--> Worker
+    API <--> DB
 ```
-terrashift/
+
+```text
+AgroNova/
 ├── apps/
-│   ├── web/                    # Next.js 14 PWA (Tailwind CSS, Leaflet, IndexedDB, Bilingual UI)
-│   ├── api/                    # Express 4 + TypeScript REST API (Zod, JWT, Helmet, PostGIS)
-│   └── worker/                 # Python Ingest Worker (power.py, smap.py, et0.py, soilgrids.py)
+│   ├── web/            # Next.js 14 PWA (Vercel) — Bilingual UI, Leaflet, IndexedDB, Print Certificate
+│   ├── api/            # Express + TypeScript REST API (Render) — Auth, Farms, Recommendations
+│   └── worker/         # Python 3.11 NASA Ingest Worker (Render) — SMAP L4, POWER, FAO-56, SoilGrids
 ├── packages/
-│   └── engine/                 # Deterministic Crop Rotation Engine (TypeScript + crops.json)
-├── docs/
-│   ├── scoring.md              # Agronomic formulas, mass-balance models, and weights logic
-│   ├── nasa-data-integration.md# Detailed SMAP L4, POWER, and Landsat thermal ET documentation
-│   ├── validation-and-ground-truthing.md # Ground-truth trial comparisons in AEZ 11, 13, 18
-│   ├── crop-table-sources.md   # Peer-reviewed citations (FAO, IPCC, BARI, BRRI, BJRI, BWMRI)
-│   └── video-and-presentation-guide.md # 30-sec demo script, 7-slide deck, and AI disclosure
-├── docker-compose.yml          # Multi-container production deployment
-└── README.md
+│   └── engine/         # Shared Deterministic Crop Rotation Scoring Engine (Vitest tested)
+├── prisma/             # PostgreSQL + PostGIS Schema & Migrations
+└── docs/               # Formulas, Validation Plan, NASA Integration, Presentation Guide
 ```
 
 ---
 
-## ⚡ Complete Setup & Execution Guide (How to Run)
+## ☁️ Production Deployment Stack (Zero-Docker Cloud Architecture)
 
-TerraShift is built as a modular monorepo. You can run the entire system with **Docker Compose (one command)** or as **independent local services (multi-terminal)**.
+TerraShift runs in production without Docker on modern serverless and managed PaaS infrastructure (and also ships with a full `docker-compose.yml` for self-hosted container deployments):
 
-### 📋 Prerequisites
-
-| Tool | Minimum Version | Purpose |
-| :--- | :--- | :--- |
-| **Node.js** | `v18.x` or higher (`v20+` recommended) | JavaScript runtime for API & Next.js Web PWA |
-| **npm** | `v9.x` or higher | Package management & workspace orchestration |
-| **Python** | `v3.11.x` or higher | NASA satellite ingest worker & FAO-56 computation |
-| **Git** | Latest | Version control & repository cloning |
-| **Docker & Docker Compose** *(Optional)* | Docker Desktop 4.x+ | Production multi-container orchestration |
-
----
-
-### 🌐 Quick Reference: Service Endpoints & Ports
-
-When running, the following services and endpoints will be active:
-
-| Service | Local URL / Port | Container Name | Description |
+| Layer | Platform | Root / Config | Key Environment Variables |
 | :--- | :--- | :--- | :--- |
-| **Web Frontend (PWA)** | **`http://localhost:3000`** | `terrashift-web` | Next.js 14 Progressive Web App (Bilingual UI, Leaflet, IndexedDB) |
-| **Backend REST API** | **`http://localhost:5000`** | `terrashift-api` | Express 4 + TypeScript REST API (Zod, JWT Auth, Farm Routes) |
-| **NASA Ingest Worker** | **`http://localhost:8010`** | `terrashift-worker` | Python service for NASA POWER, SMAP L4, & FAO-56 ET₀ |
-| **PostgreSQL + PostGIS** | `localhost:5432` | `terrashift-postgres` | Spatial database for farm boundary geofencing |
-| **Redis Cache** | `localhost:6379` | `terrashift-redis` | In-memory cache for NASA telemetry and rate-limiting |
+| **Frontend PWA** | **Vercel** | `apps/web` | `NEXT_PUBLIC_API_URL=https://<api>.onrender.com/api/v1` |
+| **Backend API** | **Render (Node)** | Monorepo Root | `DATABASE_URL`, `JWT_SECRET`, `NASA_INGEST_WORKER_URL` |
+| **NASA Worker** | **Render (Python 3)** | `apps/worker` | `POWER_TTL_HOURS=24`, `SMAP_TTL_DAYS=7`, `EARTHDATA_*` *(optional)* |
+| **Spatial Database** | **Neon DB** | PostgreSQL + PostGIS | `npx prisma migrate deploy --schema=prisma/schema.prisma` |
 
 ---
 
-### 🐳 Method 1: One-Command Run with Docker Compose (Recommended)
+## 💻 Local Development & Testing
 
-Docker Compose starts PostgreSQL/PostGIS, Redis, the Python NASA Worker, Express API, and the Next.js Frontend with automatic health-checking and inter-service networking.
-
+### 1. Multi-Terminal Local Run
 ```bash
-# 1. Clone repository & enter workspace
-git clone https://github.com/AgroNova/terrashift.git
-cd terrashift
-
-# 2. Copy the environment configuration template
-cp .env.example .env
-
-# 3. Build and launch all containers
-docker compose up --build
-```
-
-> **Note**: To run containers in the background, use `docker compose up -d --build`. To stop all services, run `docker compose down`.
-
-Once the terminal logs confirm `terrashift-web` is ready:
-👉 Open your browser at **`http://localhost:3000`**.
-
----
-
-### 💻 Method 2: Step-by-Step Local Run (Multi-Terminal Development)
-
-If you prefer running services directly on your host machine for development:
-
-#### Step 1: Initial Setup & Monorepo Build
-```bash
-# In your root project directory:
+# Clone & install workspace dependencies
+git clone https://github.com/ZisanUlHaque/AgroNova.git
+cd AgroNova
 cp .env.example .env
 npm install
 npm run build:engine
-```
+npx prisma generate --schema=prisma/schema.prisma
 
-#### Step 2: Start the Python NASA Worker (Terminal 1)
-The worker provides the local REST endpoint for fetching NASA POWER daily agroclimatology, computing FAO-56 Penman-Monteith reference evapotranspiration, and querying SMAP L4 moisture:
-```powershell
-# Windows PowerShell / macOS / Linux:
-python -m pip install -r apps/worker/requirements.txt
+# Terminal 1 — Python NASA Worker (Port 8010)
+pip install -r apps/worker/requirements.txt
 python apps/worker/worker.py --serve
-```
-*The worker starts on `http://localhost:8010`. Test health at `http://localhost:8010/health`.*
 
-#### Step 3: Start the Express REST API (Terminal 2)
-```powershell
-# In the root directory:
+# Terminal 2 — Express REST API (Port 5000)
 npm run dev:api
-```
-*The backend API starts on `http://localhost:5000`. It provides authentication, farm state storage, and engine integration.*
 
-#### Step 4: Start the Next.js Web PWA (Terminal 3)
-```powershell
-# In the root directory:
+# Terminal 3 — Next.js PWA (Port 3000)
 npm run dev:web
 ```
-*The web interface will be live on **`http://localhost:3000`**.*
 
----
-
-### 🔑 Environment Variables Configuration (`.env`)
-
-Configure your `.env` file based on `.env.example`:
-
-```ini
-# Database & In-Memory Store (Required for production / Docker)
-DATABASE_URL=postgresql://terrashift:terrashift@localhost:5432/terrashift
-REDIS_URL=redis://localhost:6379
-
-# Security & API
-JWT_SECRET=terrashift-super-secret-jwt-key-2026-agronova
-PORT=5000
-NEXT_PUBLIC_API_URL=/api/v1
-
-# NASA Worker Configuration
-NASA_INGEST_WORKER_URL=http://localhost:8010
-NASA_INGEST_TIMEOUT_MS=120000
-POWER_TTL_HOURS=24
-SMAP_TTL_DAYS=7
-
-# NASA Earthdata Login (Optional for live HDF5 granule ingest)
-# Register for free at: https://urs.earthdata.nasa.gov/
-EARTHDATA_USERNAME=
-EARTHDATA_PASSWORD=
-```
-
-> [!NOTE]
-> **NASA Earthdata Credentials**: NASA POWER and ISRIC SoilGrids APIs require **no credentials**. `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` are only needed if you wish to download raw HDF5 binary granules from NASA Earthdata Search. Without them, TerraShift transparently reports SMAP live granules as unavailable and uses the authentic regional baseline rather than substituting fabricated numbers.
-
----
-
-### 📱 How to Walkthrough & Test in the Web UI
-
-Follow this step-by-step user journey in your browser:
-
-1. **Open the App**:
-   Navigate to **`http://localhost:3000`**.
-2. **One-Click Demo Login**:
-   Click **"কৃষক রফিক হিসেবে প্রবেশ (১-ক্লিক ডেমো)"** / **"Login as Farmer Rafiq"** at the top or in the login modal. This loads a pre-configured smallholder profile.
-3. **One-Click Real Bangladesh Case Study**:
-   Click the yellow button **"বাস্তব উদাহরণ দেখুন: মোহাম্মদ রফিক (বাবুগঞ্জ, বরিশাল)"** / **"Real Case Study: Mohammad Rafiq"**:
-   - Automatically drops a pin on Babuganj, Barisal (`22.7010° N`, `90.3535° E` · AEZ 13).
-   - Ingests real NASA POWER solar radiation, mean temperature, and SMAP rootzone moisture.
-   - Generates an optimal 3-year or 4-year adaptive rotation plan (*Mustard $\to$ Mung Bean $\to$ T. Aman Rice*).
-4. **Inspect Quantitative Impact**:
-   Click the **"পরিমাণগত প্রভাব বিশ্লেষণ"** / **"Quantitative Impact Analysis"** tab:
-   - View water savings ($-61.5\%$ groundwater pumping cut, $\approx 8,000\text{ m}^3/\text{ha}$ saved).
-   - View diesel pumping fuel cost savings ($\approx \text{BDT } 12,000 - 16,000/\text{ha/year}$).
-   - View biological nitrogen fixation ($+45\text{ to } +75\text{ kg N/ha/yr}$ fixed, saving $\approx \text{BDT } 3,500$ in urea).
-   - View pest vulnerability reduction ($-67\%$).
-5. **Interactive Farmer Custom Weights**:
-   Click **"অগ্রাধিকার স্লাইডার পরিবর্তন"** / **"Customize Weights"**:
-   - Adjust the sliders for Water, Nitrogen, Soil Fit, and Heat Tolerance.
-   - Click **"প্রয়োগ করুন ও গণনা করুন"** / **"Apply & Recalculate"** to see the plan re-rank in real-time.
-6. **Toggle 3-Year vs. 4-Year Cycles**:
-   Use the toggle switch at the top of the plan to alternate between **3 Years (9 Seasons)** and **4 Years (12 Seasons)**.
-7. **Simulate True Offline Airplane Mode**:
-   Click the **"অফলাইন টেস্ট (এয়ারপ্লেন মোড)"** / **"Simulate Airplane Mode"** button in the header:
-   - Simulates complete disconnection from the internet.
-   - Demonstrates that plans, farm coordinates, and pre-cached Bangladesh AEZ climatological baselines are fully accessible and runnable from device IndexedDB.
-8. **View NASA Data & Telemetry Details**:
-   Click **"নাসা স্যাটেলাইট তথ্য ও বিশ্লেষণ"** / **"View NASA Satellite Metrics"**:
-   - Inspect the distinct separation between NASA Earth Observations (SMAP L4, POWER, Landsat ET) and External Datasets (ISRIC SoilGrids, BARI/BRRI).
-   - Read the exact FAO-56 Penman-Monteith and SMAP spherical geodesic extraction formulas under the **"প্রসেসিং সূত্র ও আর্কিটেকচার (Math & Pipeline)"** tab.
-
----
-
-### 🧪 Automated Testing & Verification
-
-Run the test suites across all layers to verify system integrity:
-
+### 2. Docker Compose (Optional All-in-One Container Stack)
 ```bash
-# 1. Test Rotation Engine (vitest: rotation rules, legume checks, quantitative metrics)
-npm run test:engine
+cp .env.example .env
+docker compose up -d --build
+docker compose exec api npx prisma migrate deploy
+```
 
-# 2. Test Backend REST API (ownership isolation, auth, input validation)
-npm run test:api
-
-# 3. Test Python NASA Ingest Worker (pytest: FAO-56 benchmark, -999 fill value handling)
-npm run test:worker
-# or: pytest apps/worker/tests -v
+### 3. Automated Verification Suites
+```bash
+npm run test:engine        # Rotation constraints, legume alternation & AHP scoring (Vitest)
+npm run test:api           # Auth, farm ownership isolation & validation (Vitest)
+npm run test:worker        # FAO-56 ET0 math, SMAP nearest-cell & -999 handling (Pytest)
 ```
 
 ---
 
-### 🛠️ Troubleshooting & FAQs
+## 📋 Judging Criteria & Traceability Matrix
 
-* **Port 3000 or 5000 is already in use**:
-  - Stop any conflicting Node processes or specify a custom port in `.env` (`PORT=5001`, `NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1`).
-* **Python Worker Module Not Found**:
-  - Ensure you have installed the requirements (`pip install -r apps/worker/requirements.txt`) and run with `python apps/worker/worker.py --serve`.
-* **Database Connection in Local Run**:
-  - If running without Docker, ensure PostgreSQL is running locally on port 5432, or rely on the API's in-memory development store for rapid evaluation.
-* **Offline PWA Caching**:
-  - Open Chrome DevTools $\to$ Application $\to$ Storage $\to$ IndexedDB $\to$ `terrashift_offline_db` to inspect locally cached plans, farm profiles, and NASA contexts.
-* **Barind Tract NASA Pipeline Script**:
-  - Run `python apps/worker/pipeline_barind.py` to regenerate the end-to-end telemetry dataset for Porsha, Naogaon (`24.9030° N, 88.4830° E`). Exports precomputed JSON directly to `apps/web/public/data/barind_naogaon_telemetry.json`.
+| Judging Pillar | How TerraShift Delivers | Key Source Files |
+| :--- | :--- | :--- |
+| **Impact** | Cuts dry-season pumping by >60% & saves `৳12k–16k/ha/yr` for 16M delta smallholders. | [`planGenerator.ts`](apps/web/src/lib/planGenerator.ts), [`PlanView.tsx`](apps/web/src/components/PlanView.tsx) |
+| **Creativity** | Dual-layer offline PWA with pre-bundled 30-AEZ climatology + 1-page printable Bengali PDF certificate. | [`offlineDb.ts`](apps/web/src/lib/offlineDb.ts), [`FarmerReportModal.tsx`](apps/web/src/components/FarmerReportModal.tsx) |
+| **Validity** | Peer-reviewed FAO-56 PM, Peoples BNF, IPCC/RothC SOC, Saaty AHP (`CR = 0.042 < 0.10`), and BARI/BRRI trials. | [`docs/scoring.md`](docs/scoring.md), [`ValidationModal.tsx`](apps/web/src/components/ValidationModal.tsx) |
+| **Relevance** | Purpose-built for *"Field Shift: Adapting Farms with NASA Data"* with strict NASA vs. external demarcation. | [`apps/worker/smap.py`](apps/worker/smap.py), [`NasaContextModal.tsx`](apps/web/src/components/NasaContextModal.tsx) |
+| **Presentation** | Bilingual বাংলা/English UI, live Vercel demo, 1-click farmer login, and front-loaded presentation deck. | [`Dashboard.tsx`](apps/web/src/components/Dashboard.tsx), [`docs/video-and-presentation-guide.md`](docs/video-and-presentation-guide.md) |
 
 ---
 
-## 📋 Traceability Matrix: 20 Judges' Feedback Items Addressed
+## 📜 Citations & AI Disclosure
 
-| # | Judges' Feedback Item | How & Where Addressed in TerraShift | Traceable Source / File |
-| :--- | :--- | :--- | :--- |
-| **1** | **Practical working demo over narration** | 1-Click live interactive demo for Barind & Barisal on landing page and dashboard. | [`apps/web/src/components/Dashboard.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/Dashboard.tsx), [`page.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/app/page.tsx) |
-| **2** | **NASA SMAP L4 & Landsat ET integration** | Step-by-step raw SMAP extraction and Landsat 9 SSEBop formula ($ET_a = ET_f \times k \times ET_0$) with MODIS cross-check delta ($+0.11\text{ mm}$). | [`apps/worker/pipeline_barind.py`](file:///d:/Downloads/AgroNova/apps/worker/pipeline_barind.py), [`NasaContextModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/NasaContextModal.tsx) |
-| **3** | **SoilGrids is NOT NASA data** | Prominently demarcated in UI, modals, and docs with external purple badges: *"ISRIC Wageningen, Netherlands (Non-NASA)"*. | [`NasaContextModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/NasaContextModal.tsx), [`MethodologyModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/MethodologyModal.tsx) |
-| **4** | **3-Year rotation logic & soil prediction** | RothC SOC model (Coleman & Jenkinson 1996, Lal 2004) & Peoples BNF model (2001, 2009); explicit disclaimer that SMAP moisture alone does NOT measure N/SOC. | [`docs/scoring.md`](file:///d:/Downloads/AgroNova/docs/scoring.md), [`PlanView.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/PlanView.tsx) |
-| **5** | **Weighted scoring weights determination** | Saaty (1980) AHP $4 \times 4$ pairwise matrix ($CR = 0.042 < 0.10$) + 3 interactive farmer sliders ("পানি", "মাটি", "লাভ") with live explanations. | [`Dashboard.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/Dashboard.tsx), [`docs/scoring.md`](file:///d:/Downloads/AgroNova/docs/scoring.md) |
-| **6** | **N & SOC restoration scientific basis** | Rigorous mass-balance equations based on root/stubble biomass residue humification and legume rhizobial nodulation rates. | [`docs/scoring.md`](file:///d:/Downloads/AgroNova/docs/scoring.md), [`PlanView.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/PlanView.tsx) |
-| **7** | **Real Bangladesh location end-to-end example** | Primary benchmark: Barind Tract (Porsha/Sapahar, Naogaon `24.9030° N, 88.4830° E` · AEZ-25). Coastal benchmark: Babuganj, Barisal (`22.7010° N, 90.3535° E`). | [`apps/worker/pipeline_barind.py`](file:///d:/Downloads/AgroNova/apps/worker/pipeline_barind.py), [`barind_naogaon_telemetry.json`](file:///d:/Downloads/AgroNova/apps/web/public/data/barind_naogaon_telemetry.json) |
-| **8** | **Quantitative rotation comparison** | Side-by-side comparison of 4 rotation strategies with water savings %, biological N fixed (kg/ha), SOM change %, pest break rating, and net return (BDT/ha). | [`PlanView.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/PlanView.tsx), [`docs/scoring.md`](file:///d:/Downloads/AgroNova/docs/scoring.md) |
-| **9** | **Recommendation validation plan** | Multi-method validation matrix with BBS yield back-testing (DONE), SRDI soil survey (DONE), BMDA water table (DONE), and DAE plot trials (PLANNED). | [`ValidationModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/ValidationModal.tsx), [`validation-and-ground-truthing.md`](file:///d:/Downloads/AgroNova/docs/validation-and-ground-truthing.md) |
-| **10** | **True offline-first demonstration** | Pre-bundled Upazila AEZ datasets in IndexedDB; interactive Airplane Mode simulator toggle directly in the UI. | [`OfflineSyncModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/OfflineSyncModal.tsx), [`Header.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/Header.tsx) |
-| **11** | **Bangla interface & local crop names** | Full Bengali UI, high-contrast mode, local variety names (*বারি সরিষা-১৪, ব্রি ধান৮৯, বারি মসুর-৮*), and Web Speech voice narration. | [`PlanView.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/PlanView.tsx), [`translations.ts`](file:///d:/Downloads/AgroNova/apps/web/src/lib/translations.ts) |
-| **12** | **Specific innovation vs existing tools** | Clear innovation matrix contrasting TerraShift against generic weather apps, black-box AI tools, and static agricultural calendars. | [`README.md`](file:///d:/Downloads/AgroNova/README.md), [`page.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/app/page.tsx) |
-| **13** | **Video UI flow priority** | Dedicated video script prioritizing UI walkthrough, SMAP moisture gauge, Landsat thermal ET formula, and 3-year calendar. | [`docs/video-and-presentation-guide.md`](file:///d:/Downloads/AgroNova/docs/video-and-presentation-guide.md) |
-| **14** | **30-second demo & 7-slide deck** | Front-loaded 30-second video demo script and complete 7-slide presentation deck formatted for official submission. | [`docs/video-and-presentation-guide.md`](file:///d:/Downloads/AgroNova/docs/video-and-presentation-guide.md) |
-| **15** | **First 30 seconds focused on problem/solution** | Hook script leads immediately with delta aquifer depletion, NASA SMAP L4 solution, and 46% water cut in first 25 seconds. | [`docs/video-and-presentation-guide.md`](file:///d:/Downloads/AgroNova/docs/video-and-presentation-guide.md) |
-| **16** | **FAO 90% topsoil degradation exact citation** | Exact citation: FAO (2021). *SOLAW 2021: Systems at breaking point*. DOI: `10.4060/cb9910en`, Chapter 2, Section 2.3. | [`README.md`](file:///d:/Downloads/AgroNova/README.md), [`AboutModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/AboutModal.tsx) |
-| **17** | **Consistent name spelling & pronunciation** | Strictly standardized to **TerraShift** / **টেরাশিফ্‌ট** with phonetic pronunciation guide  everywhere. | [`Header.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/Header.tsx), [`AboutModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/AboutModal.tsx) |
-| **18** | **AI usage disclosure** | Explicit disclosure of AI coding assistance with human verification, equation auditing, and watermark compliance notes. | [`AboutModal.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/AboutModal.tsx), [`README.md`](file:///d:/Downloads/AgroNova/README.md) |
-| **19** | **Public repository, data links, & transparency** | Open GitHub repository structure, direct NASA Earthdata product links, open APIs, and runnable test suites. | [`README.md`](file:///d:/Downloads/AgroNova/README.md), [`apps/worker/tests`](file:///d:/Downloads/AgroNova/apps/worker/tests) |
-| **20** | **NASA Space Apps criteria alignment** | Organized traceably across Impact, Creativity, Validity, Relevance, and Presentation judging criteria. | [`README.md`](file:///d:/Downloads/AgroNova/README.md), [`Dashboard.tsx`](file:///d:/Downloads/AgroNova/apps/web/src/components/Dashboard.tsx) |
+- **FAO SOLAW (2021/2022)**: *The State of the World's Land and Water Resources for Food and Agriculture: Systems at breaking point*. DOI: [10.4060/cb9910en](https://doi.org/10.4060/cb9910en), Ch. 2, Sec. 2.3.
+- **NASA Earthdata**: SMAP L4 Global 3-hourly 9 km Surface and Rootzone Soil Moisture (`SPL4SMGP`), NASA POWER Daily Agroclimatology API, Landsat 8/9 SSEBop ET.
+- **AI Disclosure**: AI coding assistants were used to accelerate TypeScript scaffolding, UI polish, and Bengali/English localization. All agronomic formulas, crop duration constraints, satellite data provenance, and BARI/BRRI research figures were independently verified by Team AgroNova.
 
 ---
 
-## 🏆 NASA Space Apps 2026 Judging Alignment
-
-- **Impact**: Directly tackles aquifer collapse and soil degradation for 16M delta smallholders, cutting irrigation water by $>60\%$.
-- **Creativity**: Dual-layer offline edge architecture with pre-bundled AEZ climatology + client-side CPU rotation engine.
-- **Validity**: Grounded in peer-reviewed models: FAO-56 Penman-Monteith, Peoples et al. BNF kinetics, IPCC Tier 1 soil carbon model, and BARI/BRRI cropping trials.
-- **Relevance**: Directly answers *"Field Shift: Adapting Farms with NASA Data"* using NASA SMAP L4, NASA POWER, and Landsat thermal ET.
-- **Presentation**: Dual language (বাংলা / English), WCAG AAA accessible high-contrast mode, 30-second front-loaded video demo script, and 7-slide deck.
-
----
-
-## 📜 Academic Citations & AI Disclosure
-
-- **FAO 90% Topsoil Degradation Claim**: FAO (2022). *The State of the World's Land and Water Resources for Food and Agriculture: Systems at breaking point (SOLAW 2021)*. Food and Agriculture Organization of the United Nations, Rome. DOI: [10.4060/cb9910en](https://doi.org/10.4060/cb9910en). Chapter 2, Section 2.3.
-- **AI Disclosure**: AI tools (Google Gemini / Anthropic Claude) were utilized for scaffolding TypeScript code, editing documentation, and validating Bengali translations. All agronomic rotation constraints, equations, and BARI/BRRI research citations were manually verified against official agricultural publications.
-
----
-
-**Team AgroNova | NASA Space Apps Challenge 2026**
+<div align="center">
+  <strong>Built with ❤️ by Team AgroNova · NASA Space Apps Challenge 2026</strong>
+</div>
