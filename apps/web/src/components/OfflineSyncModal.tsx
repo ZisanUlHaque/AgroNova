@@ -29,7 +29,7 @@ export function OfflineSyncModal({
         try {
           const farms = await offlineDb.getFarms();
           setCachedFarmCount(farms.length);
-          const plans = await offlineDb.plans.toArray();
+          const plans = await offlineDb.getAllPlans();
           setCachedPlanCount(plans.length);
         } catch (e) {
           console.error("Failed to read offline stats", e);

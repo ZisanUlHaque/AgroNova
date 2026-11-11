@@ -129,6 +129,15 @@ export const offlineDb = {
     }
   },
 
+  async getAllPlans() {
+    try {
+      const db = await getDb();
+      return await db.getAll("plans");
+    } catch (e) {
+      return [];
+    }
+  },
+
   async saveNasaContext(farmId: string, data: any) {
     try {
       const db = await getDb();
