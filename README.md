@@ -199,5 +199,5 @@ Every NASA Earth Observation product used in TerraShift is transparently traceab
 ---
 
 <div align="center">
-  <strong>Built with ❤️ by Team AgroNova · NASA Space Apps Challenge 2026</strong>
+  <strong>Team AgroNova · NASA Space Apps Challenge 2026</strong>
 </div>
