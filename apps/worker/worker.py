@@ -117,7 +117,7 @@ def main():
     args = parser.parse_args()
 
     if args.serve:
-        port = int(os.environ.get("NASA_WORKER_PORT", "8010"))
+        port = int(os.environ.get("NASA_WORKER_PORT") or os.environ.get("PORT") or "8010")
         server = ThreadingHTTPServer(("0.0.0.0", port), IngestHandler)
         print(f"NASA ingestion worker listening on port {port}")
         server.serve_forever()
