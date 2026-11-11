@@ -497,6 +497,7 @@ export default function Home() {
       const farmId = selectedFarmId || "benchmark-farm-default";
       await offlineDb.savePlan(
         farmId,
+        goal,
         adaptiveFallback.recommendedPlan,
         adaptiveFallback.alternativePlan,
         dataFreshness
@@ -549,7 +550,7 @@ export default function Home() {
       soilPh: soilPh ?? null,
       updatedAt: new Date().toISOString(),
     });
-    await offlineDb.savePlan(farmId, plan, alternativePlan, dataFreshness);
+    await offlineDb.savePlan(farmId, currentGoal, plan, alternativePlan, dataFreshness);
     if (nasaContext) {
       await offlineDb.saveNasaContext(farmId, nasaContext);
     }
